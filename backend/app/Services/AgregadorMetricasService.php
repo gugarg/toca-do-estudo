@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\DTOs\EstatisticasUsuarioDTO;
 use App\Models\Grupo;
-use App\Models\SessaoEstudo;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,22 +34,6 @@ class AgregadorMetricasService
             total_questoes: (int) ($agregados->total_questoes ?? 0),
             calculado_em: now(),
         );
-    }
-
-    /**
-     * Alias mantido para compatibilidade semântica com o restante da aplicação.
-     */
-    public function recalcularEstatisticasUsuario(int $userId): EstatisticasUsuarioDTO
-    {
-        return $this->obterEstatisticasUsuario($userId);
-    }
-
-    /**
-     * Alias em inglês para retrocompatibilidade.
-     */
-    public function recalculateUserStats(int $userId): EstatisticasUsuarioDTO
-    {
-        return $this->obterEstatisticasUsuario($userId);
     }
 
     // Monta a classificação dos membros de um grupo com uma única consulta SQL agregada, filtrando pelo período selecionado.
@@ -165,122 +148,5 @@ class AgregadorMetricasService
             $item['position'] = $indice + 1;
             return $item;
         });
-    }
-
-    /**
-     * Retorna a distribuição de esforço diário do estudante na semana corrente (Segunda a Domingo).
-     *
-     * @return array{
-     *     dias: array<int, array{
-     *         label: string,
-     *         full_label: string,
-     *         date: string,
-     *         date_formatted: string,
-     *         minutos: int,
-     *         hours: float,
-     *         hours_formatted: string,
-     *         questions: int,
-     *         is_today: bool,
-     *         is_future: bool,
-     *         is_active: bool,
-     *         percentage: int
-     *     }>,
-     *     total_hours: float,
-     *     total_hours_formatted: string,
-     *     total_minutos: int,
-     *     total_questions: int,
-     *     active_days_count: int,
-     *     period_formatted: string
-     * }
-     */
-    public function obterRitmoSemanal(int $userId): array
-    {
-        $inicioSemana = Carbon::now()->startOfWeek(Carbon::MONDAY);
-        $fimSemana = Carbon::now()->endOfWeek(Carbon::SUNDAY);
-
-        $sessoesSemana = DB::table('sessoes_estudo')
-            ->where('usuario_id', $userId)
-            ->whereBetween('data_estudo', [$inicioSemana->toDateString(), $fimSemana->toDateString()])
-            ->selectRaw('data_estudo, SUM(minutos) as total_minutos, SUM(questoes) as total_questoes')
-            ->groupBy('data_estudo')
-            ->get()
-            ->keyBy(fn($item) => Carbon::parse($item->data_estudo)->toDateString());
-
-        $dias = [];
-        $labels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-        $diasCompletos = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'];
-        $totalMinutosSemana = 0;
-        $totalQuestoesSemana = 0;
-        $hoje = Carbon::now()->toDateString();
-
-        for ($i = 0; $i < 7; $i++) {
-            $dataDia = $inicioSemana->copy()->addDays($i);
-            $dataString = $dataDia->toDateString();
-            $sessaoDia = $sessoesSemana->get($dataString);
-
-            $minutos = $sessaoDia ? (int) $sessaoDia->total_minutos : 0;
-            $questoes = $sessaoDia ? (int) $sessaoDia->total_questoes : 0;
-            $horas = \App\Helpers\TempoHelper::minutosParaHorasDecimais($minutos, 1);
-
-            $totalMinutosSemana += $minutos;
-            $totalQuestoesSemana += $questoes;
-
-            $dias[] = [
-                'label' => $labels[$i],
-                'full_label' => $diasCompletos[$i],
-                'date' => $dataString,
-                'date_formatted' => $dataDia->format('d/m'),
-                'minutos' => $minutos,
-                'hours' => $horas,
-                'hours_formatted' => $minutos > 0 ? \App\Helpers\TempoHelper::minutosParaTexto($minutos) : '0h',
-                'questions' => $questoes,
-                'is_today' => $dataString === $hoje,
-                'is_future' => $dataString > $hoje,
-                'is_active' => $minutos > 0,
-            ];
-        }
-
-        $maxMinutos = max(collect($dias)->pluck('minutos')->max(), 60);
-        foreach ($dias as &$dia) {
-            $dia['percentage'] = min(100, (int) round(($dia['minutos'] / $maxMinutos) * 100));
-        }
-        unset($dia);
-
-        return [
-            'dias' => $dias,
-            'total_hours' => \App\Helpers\TempoHelper::minutosParaHorasDecimais($totalMinutosSemana, 1),
-            'total_hours_formatted' => \App\Helpers\TempoHelper::minutosParaTexto($totalMinutosSemana),
-            'total_minutos' => $totalMinutosSemana,
-            'total_questions' => $totalQuestoesSemana,
-            'active_days_count' => collect($dias)->where('is_active', true)->count(),
-            'period_formatted' => $inicioSemana->format('d/m') . ' a ' . $fimSemana->format('d/m'),
-        ];
-    }
-
-    /**
-     * Agrupa e retorna o volume de minutos e questões nas principais disciplinas estudadas pelo aluno.
-     */
-    public function obterDistribuicaoDisciplinas(int $userId, int $limit = 6): Collection
-    {
-        return SessaoEstudo::where('usuario_id', $userId)
-            ->selectRaw('disciplina, SUM(minutos) as total_minutes, SUM(questoes) as total_questions, COUNT(id) as count')
-            ->groupBy('disciplina')
-            ->orderByDesc('total_minutes')
-            ->limit($limit)
-            ->get()
-            ->map(fn($s) => [
-                'subject' => $s->disciplina,
-                'minutes' => (int) $s->total_minutes,
-                'hours' => \App\Helpers\TempoHelper::minutosParaHorasDecimais((int) $s->total_minutes, 1),
-                'questions' => (int) $s->total_questions,
-            ]);
-    }
-
-    /**
-     * Alias de retrocompatibilidade para obter classificação do grupo.
-     */
-    public function getGroupLeaderboard(Grupo $group, string $metric = 'dias_ativos', string $period = 'semanal'): Collection
-    {
-        return $this->obterClassificacaoGrupo($group, $metric, $period);
     }
 }

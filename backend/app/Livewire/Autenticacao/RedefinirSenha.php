@@ -88,11 +88,6 @@ class RedefinirSenha extends Component
                 $user->password = Hash::make($password);
                 $user->setRememberToken(Str::random(60));
                 $user->save();
-
-                // Revoga tokens de API Sanctum existentes para invalidar sessões prévias
-                if (method_exists($user, 'tokens')) {
-                    $user->tokens()->delete();
-                }
             }
         );
 

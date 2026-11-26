@@ -326,63 +326,6 @@ class CardSessao extends Component
         $this->dispatch('session-deleted', sessionId: $this->session->id);
     }
 
-    // --- Aliases em Português para Ações do Card de Sessão ---
-
-    public function alternarSeletorReacao(): void
-    {
-        $this->toggleReactionPicker();
-    }
-
-    public function alternarReacao(string $tipoReacao): void
-    {
-        $this->toggleReaction($tipoReacao);
-    }
-
-    public function alternarComentarios(): void
-    {
-        $this->toggleComments();
-    }
-
-    public function adicionarComentario(): void
-    {
-        $this->addComment();
-    }
-
-    public function iniciarEdicaoComentario(int $comentarioId): void
-    {
-        $this->startEditComment($comentarioId);
-    }
-
-    public function cancelarEdicaoComentario(): void
-    {
-        $this->cancelEditComment();
-    }
-
-    public function salvarEdicaoComentario(): void
-    {
-        $this->saveEditComment();
-    }
-
-    public function confirmarExclusaoComentario(int $comentarioId): void
-    {
-        $this->confirmDeleteComment($comentarioId);
-    }
-
-    public function cancelarExclusaoComentario(): void
-    {
-        $this->cancelDeleteComment();
-    }
-
-    public function excluirComentario(int $comentarioId): void
-    {
-        $this->deleteComment($comentarioId);
-    }
-
-    public function excluirSessao(SessaoEstudoService $sessaoService): void
-    {
-        $this->deleteSession($sessaoService);
-    }
-
     public function render()
     {
         if ($this->showComments) {

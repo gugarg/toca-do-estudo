@@ -8,14 +8,12 @@ use App\Notifications\RecuperacaoSenhaNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
 
 class Usuario extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasFactory, Notifiable;
 
     protected $table = 'usuarios';
 
@@ -88,11 +86,6 @@ class Usuario extends Authenticatable
         return $this->hasMany(SessaoEstudo::class, 'usuario_id');
     }
 
-    public function studySessions(): HasMany
-    {
-        return $this->sessoesEstudo();
-    }
-
     public function comentarios(): HasMany
     {
         return $this->hasMany(Comentario::class, 'usuario_id');
@@ -120,37 +113,12 @@ class Usuario extends Authenticatable
         return $this->hasMany(Grupo::class, 'proprietario_id');
     }
 
-    public function ownedGroups(): HasMany
-    {
-        return $this->gruposProprios();
-    }
-
     public function estatisticas(): \App\DTOs\EstatisticasUsuarioDTO
     {
         return app(\App\Services\AgregadorMetricasService::class)->obterEstatisticasUsuario((int) $this->id);
     }
 
     public function getEstatisticasAttribute(): \App\DTOs\EstatisticasUsuarioDTO
-    {
-        return $this->estatisticas();
-    }
-
-    public function getCacheEstatisticasAttribute(): \App\DTOs\EstatisticasUsuarioDTO
-    {
-        return $this->estatisticas();
-    }
-
-    public function getStatsCacheAttribute(): \App\DTOs\EstatisticasUsuarioDTO
-    {
-        return $this->estatisticas();
-    }
-
-    public function cacheEstatisticas(): \App\DTOs\EstatisticasUsuarioDTO
-    {
-        return $this->estatisticas();
-    }
-
-    public function statsCache(): \App\DTOs\EstatisticasUsuarioDTO
     {
         return $this->estatisticas();
     }

@@ -17,7 +17,6 @@ class SessaoEstudoService
 {
     public function __construct(
         private readonly PipelineImagemService $pipelineImagem,
-        private readonly AgregadorMetricasService $agregadorMetricas,
     ) {}
 
     /**
@@ -58,8 +57,6 @@ class SessaoEstudoService
                 $compartilhar = (bool) $data['compartilhar'];
             } elseif (isset($data['share'])) {
                 $compartilhar = (bool) $data['share'];
-            } elseif (array_key_exists('group_ids', $data) && empty($data['group_ids'])) {
-                $compartilhar = false;
             }
 
             $session = SessaoEstudo::create([
@@ -126,18 +123,5 @@ class SessaoEstudoService
                 });
             }
         });
-    }
-
-    /**
-     * Aliases de retrocompatibilidade
-     */
-    public function createSession(Usuario $user, array $data, ?UploadedFile $photo = null): SessaoEstudo
-    {
-        return $this->criarSessao($user, $data, $photo);
-    }
-
-    public function deleteSession(Usuario $user, SessaoEstudo $session): void
-    {
-        $this->excluirSessao($user, $session);
     }
 }

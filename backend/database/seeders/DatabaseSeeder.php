@@ -43,24 +43,6 @@ class DatabaseSeeder extends Seeder
             return $filename;
         };
 
-        // Função auxiliar para gerar avatar WebP real para as personas
-        $createMockAvatar = function (string $letter, int $colorR, int $colorG, int $colorB): string {
-            $img = imagecreatetruecolor(256, 256);
-            $bgColor = imagecolorallocate($img, $colorR, $colorG, $colorB);
-            $textColor = imagecolorallocate($img, 255, 255, 255);
-            imagefill($img, 0, 0, $bgColor);
-            imagestring($img, 5, 124, 120, $letter, $textColor);
-
-            $filename = 'avatars/' . Str::uuid()->toString() . '.webp';
-            ob_start();
-            imagewebp($img, null, 85);
-            $webpData = ob_get_clean();
-            imagedestroy($img);
-
-            Storage::disk('public')->put($filename, $webpData);
-            return $filename;
-        };
-
         // Usuários em PT-BR (Matheus e Camila com fotos de perfil reais; Leonardo sem foto para demonstrar a inicial)
         $avatarMatheus = 'avatars/f4c2b2c6-231c-4b8d-8ee8-07f2a3460731.webp';
         $avatarCamila = 'avatars/5ed97bb0-7182-47b3-8cf7-be68b6ca03e4.webp';

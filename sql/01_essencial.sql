@@ -14,7 +14,6 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- -----------------------------------------------------------------------------
 -- 0. LIMPEZA PREVENTIVA DE ESTRUTURAS EXISTENTES (ORDEM REVERSA DE DEPENDÊNCIAS)
 -- -----------------------------------------------------------------------------
-DROP VIEW IF EXISTS vw_estatisticas_usuario;
 DROP TABLE IF EXISTS cache_estatisticas_usuario;
 DROP TABLE IF EXISTS comentarios_sessao_estudo;
 DROP TABLE IF EXISTS reacoes;
@@ -22,7 +21,6 @@ DROP TABLE IF EXISTS visibilidades_sessao_grupo;
 DROP TABLE IF EXISTS sessoes_estudo;
 DROP TABLE IF EXISTS membros_grupo;
 DROP TABLE IF EXISTS grupos;
-DROP TABLE IF EXISTS tokens_acesso_pessoal;
 DROP TABLE IF EXISTS password_reset_tokens;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS cache_locks;
@@ -133,26 +131,7 @@ CREATE TABLE failed_jobs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 6. TABELA: tokens_acesso_pessoal (Sanctum Bearer Tokens)
--- Autenticação Stateless de alta performance com hash SHA-256.
--- -----------------------------------------------------------------------------
-CREATE TABLE tokens_acesso_pessoal (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    tokenable_type VARCHAR(255) NOT NULL,
-    tokenable_id BIGINT UNSIGNED NOT NULL,
-    name TEXT NOT NULL,
-    token VARCHAR(64) NOT NULL,
-    abilities TEXT NULL,
-    last_used_at TIMESTAMP NULL,
-    expires_at TIMESTAMP NULL,
-    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT uk_tokens_token UNIQUE (token),
-    INDEX idx_tokens_tokenable (tokenable_type, tokenable_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- -----------------------------------------------------------------------------
--- 7. TABELA: grupos
+-- 6. TABELA: grupos
 -- Comunidades e salas de estudo compartilhadas entre alunos.
 -- -----------------------------------------------------------------------------
 CREATE TABLE grupos (
@@ -173,7 +152,7 @@ CREATE TABLE grupos (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 8. TABELA: membros_grupo
+-- 7. TABELA: membros_grupo
 -- Relação associativa N:N entre usuários e grupos com controle de papéis.
 -- Índices: UNIQUE em (grupo_id, usuario_id) e índice reverso (usuario_id, grupo_id).
 -- -----------------------------------------------------------------------------
@@ -190,7 +169,7 @@ CREATE TABLE membros_grupo (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 9. TABELA: sessoes_estudo
+-- 8. TABELA: sessoes_estudo
 -- Publicações individuais de estudo acadêmico com comprovação fotográfica.
 -- Índices cobrindo auditoria temporal e agregação indexada de feeds/rankings.
 -- -----------------------------------------------------------------------------
@@ -213,7 +192,7 @@ CREATE TABLE sessoes_estudo (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 10. TABELA: reacoes (Kudos / Interações Sociais)
+-- 9. TABELA: reacoes (Kudos / Interações Sociais)
 -- Reações acadêmicas únicas por usuário, sessão de estudo e comunidade.
 -- -----------------------------------------------------------------------------
 CREATE TABLE reacoes (
@@ -231,7 +210,7 @@ CREATE TABLE reacoes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 11. TABELA: comentarios_sessao_estudo
+-- 10. TABELA: comentarios_sessao_estudo
 -- Fórum de discussão e feedback acadêmico vinculado à comunidade onde foi publicado.
 -- -----------------------------------------------------------------------------
 CREATE TABLE comentarios_sessao_estudo (
@@ -249,23 +228,6 @@ CREATE TABLE comentarios_sessao_estudo (
     CONSTRAINT fk_comentarios_grupo FOREIGN KEY (grupo_id) REFERENCES grupos (id) ON DELETE CASCADE,
     CONSTRAINT fk_comentarios_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- -----------------------------------------------------------------------------
--- 12. VIEW ANALÍTICA CANÔNICA EM 3FN PURA (AUDITORIA ACADÊMICA)
--- Visão formal sob demanda para auditoria e relatórios analíticos sem desnormalização.
--- Nota de Engenharia: A aplicação consome agregações indexadas diretas através do
--- serviço AgregadorMetricasService para otimização de plano de execução (type: ref).
--- -----------------------------------------------------------------------------
-CREATE OR REPLACE VIEW vw_estatisticas_usuario AS
-SELECT 
-    u.id AS usuario_id,
-    COUNT(DISTINCT se.data_estudo) AS total_dias_ativos,
-    COALESCE(SUM(se.minutos), 0) AS total_minutos,
-    COALESCE(SUM(se.questoes), 0) AS total_questoes,
-    MAX(se.updated_at) AS calculado_em
-FROM usuarios u
-LEFT JOIN sessoes_estudo se ON se.usuario_id = u.id
-GROUP BY u.id;
 
 -- =============================================================================
 -- FIM DO SCRIPT ESSENCIAL — TOCA DO ESTUDO

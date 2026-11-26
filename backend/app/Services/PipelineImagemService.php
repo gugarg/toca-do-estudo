@@ -102,14 +102,6 @@ class PipelineImagemService
     }
 
     /**
-     * Alias de retrocompatibilidade para processar e converter imagem.
-     */
-    public function processAndConvertToWebP(UploadedFile $file, string $directory = 'sessions'): string
-    {
-        return $this->processarEConverterParaWebP($file, $directory);
-    }
-
-    /**
      * Processa uma imagem recebida como string base64 (data URI do canvas do navegador),
      * redimensiona e converte para WebP com remoção de metadados EXIF.
      * Utilizado pelo editor visual de corte de avatar.

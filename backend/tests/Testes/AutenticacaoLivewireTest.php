@@ -67,7 +67,7 @@ class AutenticacaoLivewireTest extends TestCase
         $this->assertFalse(Auth::check());
     }
 
-    public function test_cadastro_cria_usuario_e_inicializa_cache_de_estatisticas(): void
+    public function test_cadastro_cria_usuario_e_calcula_estatisticas_iniciais(): void
     {
         Livewire::test(Cadastrar::class)
             ->set('name', 'Camila Duarte')
@@ -85,8 +85,7 @@ class AutenticacaoLivewireTest extends TestCase
 
         $usuario = Usuario::where('email', 'camila@tocadoestudo.local')->first();
         $this->assertNotNull($usuario);
-        $this->assertNotNull($usuario->statsCache);
-        $this->assertEquals(0, $usuario->statsCache->total_dias_ativos);
+        $this->assertEquals(0, $usuario->estatisticas()->total_dias_ativos);
         $this->assertTrue(Auth::check());
     }
 

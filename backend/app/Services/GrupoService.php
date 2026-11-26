@@ -168,22 +168,4 @@ class GrupoService
 
         return $code;
     }
-
-    /**
-     * Aliases de retrocompatibilidade
-     */
-    public function createGroup(Usuario $owner, array $data, ?UploadedFile $coverPhoto = null): Grupo
-    {
-        return $this->criarGrupo($owner, $data, $coverPhoto);
-    }
-
-    public function joinGroupByCode(Usuario $user, string $inviteCode): Grupo
-    {
-        return $this->entrarGrupoPorCodigo($user, $inviteCode);
-    }
-
-    public function leaveGroup(Usuario $user, Grupo $group): void
-    {
-        $this->sairGrupo($user, $group);
-    }
 }

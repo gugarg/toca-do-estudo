@@ -56,8 +56,6 @@ return [
 
     'url_site' => env('URL_SITE', env('APP_URL', 'http://127.0.0.1:8000')),
 
-    'frontend_url' => env('URL_SITE', env('FRONTEND_URL', 'http://127.0.0.1:8000')),
-
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

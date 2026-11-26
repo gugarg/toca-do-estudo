@@ -8,7 +8,6 @@ use App\Livewire\Painel\VisaoGeral;
 use App\Models\Grupo;
 use App\Models\SessaoEstudo;
 use App\Models\Usuario;
-use App\Services\AgregadorMetricasService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -54,8 +53,6 @@ class PainelLivewireTest extends TestCase
             'questoes' => 30,
             'anotacoes' => 'Poder de polícia e atos administrativos.',
         ]);
-
-        app(AgregadorMetricasService::class)->recalcularEstatisticasUsuario($usuario->id);
 
         $this->actingAs($usuario);
 

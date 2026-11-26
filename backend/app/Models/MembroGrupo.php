@@ -18,24 +18,4 @@ class MembroGrupo extends Pivot
         'papel',
         'ingressou_em',
     ];
-
-    public function getRoleAttribute(): ?string
-    {
-        return $this->papel;
-    }
-
-    public function setRoleAttribute(?string $value): void
-    {
-        $this->attributes['papel'] = $value;
-    }
-
-    public function getJoinedAtAttribute(): mixed
-    {
-        return $this->ingressou_em;
-    }
-
-    public function setJoinedAtAttribute(mixed $value): void
-    {
-        $this->attributes['ingressou_em'] = $value;
-    }
 }

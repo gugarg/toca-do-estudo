@@ -8,7 +8,6 @@ use App\Models\Grupo;
 use App\Models\Usuario;
 use App\Services\AgregadorMetricasService;
 use App\Services\GrupoService;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -319,94 +318,6 @@ class DetalhesGrupo extends Component
         } catch (\Throwable $e) {
             $this->modalError = $e->getMessage();
         }
-    }
-
-    // --- Aliases em Português para Ações do Componente ---
-
-    public function selecionarGrupo(int $id): void
-    {
-        $this->selectGroup($id);
-    }
-
-    public function alternarAba(string $aba): void
-    {
-        $this->switchTab($aba);
-    }
-
-    public function definirMetrica(string $metrica): void
-    {
-        $this->setMetric($metrica);
-    }
-
-    public function definirPeriodo(string $periodo): void
-    {
-        $this->setPeriod($periodo);
-    }
-
-    public function abrirModalCriar(): void
-    {
-        $this->openCreateModal();
-    }
-
-    public function fecharModalCriar(): void
-    {
-        $this->closeCreateModal();
-    }
-
-    public function criarGrupo(GrupoService $grupoService): void
-    {
-        $this->createGroup($grupoService);
-    }
-
-    public function abrirModalIngresso(): void
-    {
-        $this->openJoinModal();
-    }
-
-    public function fecharModalIngresso(): void
-    {
-        $this->closeJoinModal();
-    }
-
-    public function entrarNoGrupo(GrupoService $grupoService): void
-    {
-        $this->joinGroup($grupoService);
-    }
-
-    public function abrirModalSair(): void
-    {
-        $this->openLeaveModal();
-    }
-
-    public function fecharModalSair(): void
-    {
-        $this->closeLeaveModal();
-    }
-
-    public function sairDoGrupo(GrupoService $grupoService): void
-    {
-        $this->leaveGroup($grupoService);
-    }
-
-    public function abrirModalConfiguracoes(): void
-    {
-        $this->openEditModal();
-    }
-
-    public function fecharModalConfiguracoes(): void
-    {
-        $this->closeEditModal();
-    }
-
-    public function atualizarConfiguracoesGrupo(GrupoService $grupoService): void
-    {
-        $this->updateGroupSettings($grupoService);
-    }
-
-    #[On('session-created')]
-    public function onSessionCreated(): void
-    {
-        // Re-renderiza o feed e ranking reativamente
     }
 
     public function render(AgregadorMetricasService $metricasService)

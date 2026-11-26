@@ -200,28 +200,6 @@ class EditarPerfil extends Component
         $this->passwordResetFeedback = "Enviamos o link de redefinição de senha para {$user->email}. Verifique sua caixa de entrada.";
     }
 
-    // --- Aliases em Português para Ações de Perfil ---
-
-    public function salvar(PipelineImagemService $pipelineImagem): void
-    {
-        $this->save($pipelineImagem);
-    }
-
-    public function restaurar(): void
-    {
-        $this->restore();
-    }
-
-    public function removerAvatar(): void
-    {
-        $this->removeAvatar();
-    }
-
-    public function solicitarRedefinicaoSenha(): void
-    {
-        $this->requestPasswordReset();
-    }
-
     public function render(AgregadorMetricasService $metricasService)
     {
         /** @var Usuario $user */

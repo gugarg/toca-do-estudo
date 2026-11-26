@@ -28,7 +28,6 @@ A plataforma organiza o acompanhamento de estudos em comunidades fechadas com fo
 - **Comunidades fechadas:** criação de grupos com código de convite, edição de nome e descrição pelo proprietário, bloqueio de entrada duplicada e saída de membros comuns.
 - **Classificações e desempate:** duas modalidades fixas definidas na criação do grupo (`Dias Ativos` ou `Horas Líquidas + Questões` com pesos imutáveis), filtros por período (`Semana`, `Mês` e `Geral`), isolamento temporal à data de ingresso do membro (estudos anteriores à entrada não contam retroativamente) e desempate em quatro níveis (minutos exatos, questões resolvidas, Dias Ativos e menor ID de usuário).
 - **Mural social:** exibição das 20 sessões compartilhadas mais recentes da comunidade, reações predefinidas de incentivo e comentários vinculados à comunidade em que foram feitos (com edição e exclusão restritas ao autor).
-- **API HTTP (`/api/v1`):** endpoints JSON protegidos por tokens Bearer com Laravel Sanctum para consultas, sessões, comentários, reações e comunidades.
 
 ## Tecnologias utilizadas
 
@@ -38,7 +37,6 @@ A plataforma organiza o acompanhamento de estudos em comunidades fechadas com fo
 | Interface reativa | Livewire / Blade / Alpine.js | 3.x |
 | Estilização e build | CSS3 / Vite | Vite 5.4 |
 | Banco de dados | MySQL | 8.0+ |
-| Autenticação de API | Laravel Sanctum | Integrado |
 | Processamento de imagem | PHP GD | Nativo PHP |
 | Testes automatizados | PHPUnit | 10.5 |
 
@@ -59,7 +57,7 @@ A plataforma organiza o acompanhamento de estudos em comunidades fechadas com fo
 git clone https://github.com/gugarg/toca-do-estudo.git
 cd toca-do-estudo/backend
 
-# Dependências do backend PHP (Laravel, Livewire, Sanctum)
+# Dependências do backend PHP (Laravel e Livewire)
 composer install
 
 # Dependências de build dos assets estáticos (Vite)
@@ -104,7 +102,7 @@ composer dev
 ```
 *(No Windows, também é possível executar `dev.bat` na raiz.)*
 
-A aplicação ficará disponível em `http://127.0.0.1:8000` e a API em `http://127.0.0.1:8000/api/v1`. Para gerar o build de produção dos assets e rodar apenas com `php artisan serve`, use `npm run build` dentro de `backend/`.
+A aplicação ficará disponível em `http://127.0.0.1:8000`. Para gerar o build de produção dos assets e rodar apenas com `php artisan serve`, use `npm run build` dentro de `backend/`.
 
 ## Usuários de teste
 
@@ -125,17 +123,17 @@ cd backend
 php artisan test
 ```
 
-Resultado da execução documentada no TCC: **76 testes aprovados (333 asserções)**, distribuídos em:
+Resultado da execução atual da suíte: **75 testes aprovados (330 asserções)**, distribuídos em:
 
 - Autenticação, painel e perfil (23 testes)
 - Comunidades e participação (17 testes)
 - Registro de estudos (16 testes)
 - Integridade transacional e processamento de imagens (11 testes)
-- Classificação e métricas (9 testes)
+- Classificação e métricas (8 testes)
 
 ## Principais rotas
 
-### Interface Web (Livewire / Blade)
+Todas as rotas atendem a interface web em Livewire / Blade:
 
 | Método | Rota | Alias | Acesso |
 | :--- | :--- | :--- | :--- |
@@ -148,22 +146,6 @@ Resultado da execução documentada no TCC: **76 testes aprovados (333 asserçõ
 | GET | `/comunidades/{grupo}` | `/groups/{group}` | Autenticado |
 | GET | `/perfil` | `/profile` | Autenticado |
 | POST | `/sair` | `/logout` | Autenticado |
-
-### API REST (`/api/v1`)
-
-| Método | Rota após `/api/v1` | Finalidade |
-| :--- | :--- | :--- |
-| POST | `/auth/login` | Autenticar e emitir token Bearer |
-| GET / POST | `/study-sessions` | Listar ou registrar sessões do usuário autenticado |
-| GET / DELETE | `/study-sessions/{id}` | Consultar sessão autorizada ou excluir sessão própria |
-| GET / POST | `/groups/{group}/study-sessions/{id}/comments` | Listar ou publicar comentários vinculados à comunidade |
-| GET / POST | `/study-sessions/{id}/comments` | Listar ou publicar comentários (requer `group_id` no envio) |
-| PATCH / DELETE | `/comments/{id}` | Editar ou excluir comentário próprio |
-| POST / DELETE | `/groups/{group}/study-sessions/{id}/reactions` | Adicionar ou remover reação própria na comunidade |
-| POST / DELETE | `/study-sessions/{id}/reactions` | Adicionar ou remover reação própria (requer `group_id`) |
-| GET | `/groups/{id}` | Consultar detalhes da comunidade |
-| GET | `/groups/{id}/feed` | Consultar mural da comunidade |
-| GET | `/groups/{id}/leaderboard` | Consultar classificação da comunidade |
 
 ## Configuração de e-mail (SMTP)
 

@@ -14,6 +14,7 @@ use App\Models\Usuario;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -59,7 +60,7 @@ class SessoesEstudoLivewireTest extends TestCase
             ->set('minutes', 90)
             ->set('questions', 15)
             ->set('notes', 'Estudo de integrais triplas e superfícies.')
-            ->set('selectedGroups', [$grupo->id])
+            ->set('compartilhar', true)
             ->call('save')
             ->assertDispatched('session-created');
 
@@ -454,7 +455,7 @@ class SessoesEstudoLivewireTest extends TestCase
             ->assertSet('commentError', 'Comentários devem ser publicados dentro do mural de uma comunidade.');
     }
 
-    public function test_api_exige_grupo_valido_e_vincula_reacoes_e_comentarios_a_comunidade(): void
+    public function test_politica_e_livewire_exigem_grupo_valido_e_vinculam_reacoes_e_comentarios_a_comunidade(): void
     {
         $autor = Usuario::factory()->create();
         $colega = Usuario::factory()->create();
@@ -472,61 +473,69 @@ class SessoesEstudoLivewireTest extends TestCase
         ]);
 
         $sessao = $this->criarSessao($autor, ['compartilhar' => true]);
-        $tokenColega = $colega->createToken('api')->plainTextToken;
-        $tokenEstranho = $estranho->createToken('api')->plainTextToken;
 
-        // 1. Endpoint genérico sem group_id deve ser rejeitado (422)
-        $this->withHeader('Authorization', "Bearer {$tokenColega}")
-            ->postJson("/api/v1/study-sessions/{$sessao->id}/comments", [
-                'content' => 'Sem grupo',
-            ])
-            ->assertStatus(422);
-
-        // 2. Colega não pode comentar no Grupo B (do qual não participa)
-        $this->withHeader('Authorization', "Bearer {$tokenColega}")
-            ->postJson("/api/v1/groups/{$grupoB->id}/study-sessions/{$sessao->id}/comments", [
-                'content' => 'Tentativa em grupo alheio',
-            ])
+        // 1. Sem vínculo de comunidade (groupId nulo), reação retorna 403 e comentário exibe erro de vínculo
+        Livewire::actingAs($colega)
+            ->test(CardSessao::class, ['session' => $sessao])
+            ->call('toggleReaction', 'fire')
             ->assertForbidden();
 
-        // 3. Estranho fora de todos os grupos não pode reagir no Grupo A
-        auth()->forgetGuards();
-        $this->withHeader('Authorization', "Bearer {$tokenEstranho}")
-            ->postJson("/api/v1/groups/{$grupoA->id}/study-sessions/{$sessao->id}/reactions", [
-                'reaction_type' => 'fire',
-            ])
+        Livewire::actingAs($colega)
+            ->test(CardSessao::class, ['session' => $sessao])
+            ->set('newCommentText', 'Sem grupo')
+            ->call('addComment')
+            ->assertSet('commentError', 'Comentários devem ser publicados dentro do mural de uma comunidade.');
+
+        $this->assertSame(0, Reacao::count());
+        $this->assertSame(0, Comentario::count());
+
+        // 2. Colega não pode interagir no Grupo B (do qual não participa)
+        $this->assertFalse(Gate::forUser($colega)->allows('interagirNoGrupo', [$sessao, $grupoB]));
+        Livewire::actingAs($colega)
+            ->test(CardSessao::class, ['session' => $sessao, 'groupId' => $grupoB->id])
+            ->set('newCommentText', 'Tentativa em grupo alheio')
+            ->call('addComment')
             ->assertForbidden();
 
-        // 4. Colega reage e comenta corretamente no Grupo A
-        auth()->forgetGuards();
-        $this->withHeader('Authorization', "Bearer {$tokenColega}")
-            ->postJson("/api/v1/groups/{$grupoA->id}/study-sessions/{$sessao->id}/reactions", [
-                'reaction_type' => 'applause',
-            ])
-            ->assertCreated()
-            ->assertJsonPath('data.group_id', $grupoA->id);
+        // 3. Estranho fora de todos os grupos não pode reagir nem comentar no Grupo A
+        $this->assertFalse(Gate::forUser($estranho)->allows('interagirNoGrupo', [$sessao, $grupoA]));
+        Livewire::actingAs($estranho)
+            ->test(CardSessao::class, ['session' => $sessao, 'groupId' => $grupoA->id])
+            ->call('toggleReaction', 'fire')
+            ->assertForbidden();
 
-        $this->withHeader('Authorization', "Bearer {$tokenColega}")
-            ->postJson("/api/v1/groups/{$grupoA->id}/study-sessions/{$sessao->id}/comments", [
-                'content' => 'Excelente avanço no Grupo Alfa!',
-            ])
-            ->assertCreated()
-            ->assertJsonPath('data.group_id', $grupoA->id);
+        // 4. Colega (membro do Grupo A) tem permissão e reage/comenta corretamente no Grupo A
+        $this->assertTrue(Gate::forUser($colega)->allows('interagirNoGrupo', [$sessao, $grupoA]));
 
-        // 5. Feed da API do Grupo B não deve retornar reações nem comentários do Grupo A
-        auth()->forgetGuards();
-        $tokenAutor = $autor->createToken('api')->plainTextToken;
-        $this->withHeader('Authorization', "Bearer {$tokenAutor}")
-            ->getJson("/api/v1/groups/{$grupoB->id}/feed")
-            ->assertOk()
-            ->assertJsonPath('data.0.reactions_count', 0)
-            ->assertJsonPath('data.0.comments_count', 0);
+        Livewire::actingAs($colega)
+            ->test(CardSessao::class, ['session' => $sessao, 'groupId' => $grupoA->id])
+            ->call('toggleReaction', 'applause')
+            ->set('newCommentText', 'Excelente avanço no Grupo Alfa!')
+            ->call('addComment');
 
-        $this->withHeader('Authorization', "Bearer {$tokenAutor}")
-            ->getJson("/api/v1/groups/{$grupoA->id}/feed")
-            ->assertOk()
-            ->assertJsonPath('data.0.reactions_count', 1)
-            ->assertJsonPath('data.0.comments_count', 1);
+        $this->assertDatabaseHas('reacoes', [
+            'sessao_estudo_id' => $sessao->id,
+            'grupo_id' => $grupoA->id,
+            'usuario_id' => $colega->id,
+            'tipo_reacao' => 'applause',
+        ]);
+        $this->assertDatabaseHas('comentarios_sessao_estudo', [
+            'sessao_estudo_id' => $sessao->id,
+            'grupo_id' => $grupoA->id,
+            'usuario_id' => $colega->id,
+            'conteudo' => 'Excelente avanço no Grupo Alfa!',
+        ]);
+
+        // 5. Card do Grupo B não deve exibir reações nem comentários do Grupo A
+        Livewire::actingAs($autor)
+            ->test(CardSessao::class, ['session' => $sessao, 'groupId' => $grupoB->id])
+            ->assertSet('reactionsCount', 0)
+            ->assertSet('commentsCount', 0);
+
+        Livewire::actingAs($autor)
+            ->test(CardSessao::class, ['session' => $sessao, 'groupId' => $grupoA->id])
+            ->assertSet('reactionsCount', 1)
+            ->assertSet('commentsCount', 1);
     }
 }
 

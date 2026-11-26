@@ -8,9 +8,7 @@ use App\Models\SessaoEstudo;
 use App\Models\Usuario;
 use App\Services\SessaoEstudoService;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -29,7 +27,6 @@ class ModalCriarSessao extends Component
     public int $minutesPart = 0;
     public int $questions = 20;
     public string $notes = '';
-    public array $selectedGroups = [];
     public bool $compartilhar = true;
 
     /** @var \Illuminate\Http\UploadedFile|null */
@@ -41,7 +38,6 @@ class ModalCriarSessao extends Component
     {
         $this->studyDate = Carbon::today()->toDateString();
         $this->sincronizarHorasMinutos();
-        $this->loadUserGroups();
     }
 
     #[On('abrir-modal-sessao')]
@@ -51,7 +47,6 @@ class ModalCriarSessao extends Component
         $this->errorMessage = null;
         $this->studyDate = Carbon::today()->toDateString();
         $this->sincronizarHorasMinutos();
-        $this->loadUserGroups();
         $this->isOpen = true;
     }
 
@@ -82,11 +77,6 @@ class ModalCriarSessao extends Component
     {
         $this->minutes = max(5, min(720, $totalMinutos));
         $this->sincronizarHorasMinutos();
-    }
-
-    public function definirMinutos(int $totalMinutos): void
-    {
-        $this->setMinutesPreset($totalMinutos);
     }
 
     protected function sincronizarHorasMinutos(): void
@@ -125,37 +115,6 @@ class ModalCriarSessao extends Component
         $this->photo = null;
     }
 
-    // --- Aliases em Português para Ações do Modal ---
-
-    public function abrir(): void
-    {
-        $this->open();
-    }
-
-    public function fechar(): void
-    {
-        $this->close();
-    }
-
-    public function removerFoto(): void
-    {
-        $this->removePhoto();
-    }
-
-    public function salvar(SessaoEstudoService $sessaoService): void
-    {
-        $this->save($sessaoService);
-    }
-
-    protected function loadUserGroups(): void
-    {
-        /** @var Usuario $user */
-        $user = Auth::user();
-        if ($user) {
-            $this->selectedGroups = $user->grupos()->pluck('grupos.id')->toArray();
-        }
-    }
-
     public function save(SessaoEstudoService $sessaoService): void
     {
         $this->errorMessage = null;
@@ -182,12 +141,6 @@ class ModalCriarSessao extends Component
             'minutes' => ['required', 'integer', 'min:5', 'max:720'],
             'questions' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'selectedGroups' => ['nullable', 'array'],
-            'selectedGroups.*' => [
-                'integer',
-                'distinct',
-                Rule::exists('membros_grupo', 'grupo_id')->where(fn($q) => $q->where('usuario_id', $user->id)),
-            ],
             'photo' => [
                 'nullable',
                 'image',
@@ -201,7 +154,6 @@ class ModalCriarSessao extends Component
             'minutes.min' => 'O tempo de estudo deve ser de no mínimo 5 minutos.',
             'minutes.max' => 'O tempo por sessão não pode exceder 720 minutos (12 horas).',
             'questions.max' => 'O número de questões não pode exceder 1.000 por sessão.',
-            'selectedGroups.*.exists' => 'Você só pode contabilizar a sessão em grupos dos quais é membro.',
             'photo.max' => 'A foto de comprovação não pode exceder 5MB.',
             'photo.image' => 'Apenas imagens nos formatos JPEG, PNG e WEBP são permitidas.',
         ]);
@@ -223,7 +175,6 @@ class ModalCriarSessao extends Component
                 'questoes' => $dadosValidados['questions'] ?? 0,
                 'anotacoes' => !empty($dadosValidados['notes']) ? trim($dadosValidados['notes']) : null,
                 'compartilhar' => $this->compartilhar,
-                'group_ids' => $dadosValidados['selectedGroups'] ?? [],
             ], $this->photo);
 
             $this->dispatch('session-created');
@@ -241,10 +192,7 @@ class ModalCriarSessao extends Component
 
     public function render()
     {
-        $userGroups = Auth::user() ? Auth::user()->grupos()->get() : collect();
-
         return view('livewire.sessoes-estudo.modal-criar-sessao', [
-            'userGroups' => $userGroups,
             'minDate' => SessaoEstudo::getDataLimiteRetroativa(),
         ]);
     }

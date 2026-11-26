@@ -59,7 +59,7 @@ class AgregadorMetricasServiceTest extends TestCase
             'questions' => 40,
         ]);
 
-        $stats = $this->service->recalcularEstatisticasUsuario($user->id);
+        $stats = $this->service->obterEstatisticasUsuario($user->id);
 
         // Exatamente 2 dias ativos (10 e 11) apesar de 4 sessões
         $this->assertEquals(2, $stats->total_dias_ativos);
@@ -69,7 +69,7 @@ class AgregadorMetricasServiceTest extends TestCase
         $this->assertEquals(85, $stats->total_questoes);
     }
 
-    public function test_recalculo_de_estatisticas_e_idempotente(): void
+    public function test_consulta_de_estatisticas_e_consistente_entre_chamadas(): void
     {
         $user = Usuario::factory()->create();
 
@@ -81,8 +81,8 @@ class AgregadorMetricasServiceTest extends TestCase
             'questions' => 50,
         ]);
 
-        $firstRun = $this->service->recalcularEstatisticasUsuario($user->id);
-        $secondRun = $this->service->recalcularEstatisticasUsuario($user->id);
+        $firstRun = $this->service->obterEstatisticasUsuario($user->id);
+        $secondRun = $this->service->obterEstatisticasUsuario($user->id);
 
         $this->assertEquals($firstRun->total_dias_ativos, $secondRun->total_dias_ativos);
         $this->assertEquals($firstRun->total_minutos, $secondRun->total_minutos);
@@ -310,34 +310,6 @@ class AgregadorMetricasServiceTest extends TestCase
             $this->assertSame(61, $ranking[0]['minutes_in_period']);
             $this->assertSame(60, $ranking[1]['minutes_in_period']);
         }
-    }
-
-    public function test_obter_ritmo_semanal_agrega_corretamente_sete_dias_da_semana(): void
-    {
-        $user = Usuario::factory()->create();
-        $hoje = \Carbon\Carbon::now();
-        $inicioSemana = $hoje->copy()->startOfWeek(\Carbon\Carbon::MONDAY);
-
-        // Estudo na segunda-feira da semana atual: 120 min, 30 questões
-        SessaoEstudo::create([
-            'user_id' => $user->id,
-            'study_date' => $inicioSemana->toDateString(),
-            'subject' => 'Cálculo I',
-            'minutes' => 120,
-            'questions' => 30,
-        ]);
-
-        $ritmo = $this->service->obterRitmoSemanal($user->id);
-
-        $this->assertCount(7, $ritmo['dias']);
-        $this->assertEquals(2.0, $ritmo['total_hours']);
-        $this->assertEquals(120, $ritmo['total_minutos']);
-        $this->assertEquals(30, $ritmo['total_questions']);
-        $this->assertEquals(1, $ritmo['active_days_count']);
-        $this->assertEquals('Seg', $ritmo['dias'][0]['label']);
-        $this->assertEquals(120, $ritmo['dias'][0]['minutos']);
-        $this->assertEquals(30, $ritmo['dias'][0]['questions']);
-        $this->assertTrue($ritmo['dias'][0]['is_active']);
     }
 
     public function test_sessoes_anteriores_a_entrada_no_grupo_nao_contam_no_ranking_nem_no_mural(): void

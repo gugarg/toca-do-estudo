@@ -22,12 +22,4 @@ class TempoHelper
         }
         return "{$m}min";
     }
-
-    /**
-     * Converte minutos em horas decimais com precisão configurável (ex: 90 min -> 1.5).
-     */
-    public static function minutosParaHorasDecimais(int $minutos, int $casasDecimais = 1): float
-    {
-        return round($minutos / 60.0, $casasDecimais);
-    }
 }

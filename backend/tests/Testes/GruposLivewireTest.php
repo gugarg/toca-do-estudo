@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Tests\Testes;
 
 use App\Livewire\Grupos\DetalhesGrupo;
+use App\Livewire\SessoesEstudo\CardSessao;
 use App\Models\Grupo;
 use App\Models\SessaoEstudo;
 use App\Models\Usuario;
+use App\Services\GrupoService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -376,13 +379,25 @@ class GruposLivewireTest extends TestCase
         ]);
         $grupo->members()->attach($dono->id, ['papel' => 'proprietario', 'ingressou_em' => now()]);
 
-        $token = $dono->createToken('token')->plainTextToken;
-
-        $this->withHeader('Authorization', "Bearer {$token}")
-            ->putJson("/api/v1/groups/{$grupo->id}", [
+        try {
+            app(GrupoService::class)->atualizarGrupo($dono, $grupo, [
                 'pontos_hora' => 20.0,
                 'pontos_questao' => 5.0,
             ]);
+            $this->fail('O serviço deveria rejeitar alteração de pesos após a criação.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('imutáveis', $e->getMessage());
+        }
+
+        try {
+            $grupo->update([
+                'pontos_hora' => 20.0,
+                'pontos_questao' => 5.0,
+            ]);
+            $this->fail('O modelo Grupo deveria bloquear alteração direta de pesos.');
+        } catch (\DomainException $e) {
+            $this->assertStringContainsString('imutáveis', $e->getMessage());
+        }
 
         $this->assertEquals(10.0, (float) $grupo->fresh()->pontos_hora);
         $this->assertEquals(1.0, (float) $grupo->fresh()->pontos_questao);
@@ -529,17 +544,21 @@ class GruposLivewireTest extends TestCase
             ->assertDontSee('Direito Penal Antigo')
             ->assertSee('Nenhum estudo publicado neste grupo ainda.');
 
-        // Na API, Estudante B não pode ver nem comentar na sessão anterior à entrada no grupo
-        $tokenB = $estudanteB->createToken('api')->plainTextToken;
-        $this->withHeader('Authorization', "Bearer {$tokenB}")
-            ->getJson("/api/v1/study-sessions/{$sessaoAntiga->id}")
+        // Pelas regras de autorização (Policy), Estudante B não pode ver nem interagir na sessão anterior à entrada no grupo
+        $this->assertFalse(Gate::forUser($estudanteB)->allows('view', $sessaoAntiga));
+        $this->assertFalse(Gate::forUser($estudanteB)->allows('interagirNoGrupo', [$sessaoAntiga, $grupoNovo]));
+
+        // Mesmo tentando interagir via componente Livewire no contexto do grupo novo, recebe 403 e não persiste
+        Livewire::actingAs($estudanteB)
+            ->test(CardSessao::class, ['session' => $sessaoAntiga, 'groupId' => $grupoNovo->id])
+            ->set('newCommentText', 'Tentativa em sessão pré-grupo')
+            ->call('addComment')
             ->assertForbidden();
 
-        $this->withHeader('Authorization', "Bearer {$tokenB}")
-            ->postJson("/api/v1/groups/{$grupoNovo->id}/study-sessions/{$sessaoAntiga->id}/comments", [
-                'content' => 'Tentativa em sessão pré-grupo',
-            ])
-            ->assertForbidden();
+        $this->assertDatabaseMissing('comentarios_sessao_estudo', [
+            'sessao_estudo_id' => $sessaoAntiga->id,
+            'grupo_id' => $grupoNovo->id,
+        ]);
 
         // Estudante A registra uma sessão HOJE (dia 25) — esta deve aparecer e permitir comentários
         $sessaoHoje = SessaoEstudo::create([
@@ -555,11 +574,19 @@ class GruposLivewireTest extends TestCase
             ->assertSee('Direito Civil Atual')
             ->assertDontSee('Direito Penal Antigo');
 
-        $this->withHeader('Authorization', "Bearer {$tokenB}")
-            ->postJson("/api/v1/groups/{$grupoNovo->id}/study-sessions/{$sessaoHoje->id}/comments", [
-                'content' => 'Bons estudos hoje!',
-            ])
-            ->assertCreated();
+        $this->assertTrue(Gate::forUser($estudanteB)->allows('interagirNoGrupo', [$sessaoHoje, $grupoNovo]));
+
+        Livewire::actingAs($estudanteB)
+            ->test(CardSessao::class, ['session' => $sessaoHoje, 'groupId' => $grupoNovo->id])
+            ->set('newCommentText', 'Bons estudos hoje!')
+            ->call('addComment');
+
+        $this->assertDatabaseHas('comentarios_sessao_estudo', [
+            'sessao_estudo_id' => $sessaoHoje->id,
+            'grupo_id' => $grupoNovo->id,
+            'usuario_id' => $estudanteB->id,
+            'conteudo' => 'Bons estudos hoje!',
+        ]);
     }
 }
 
