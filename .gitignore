@@ -1,0 +1,64 @@
+# Dependências
+node_modules/
+vendor/
+
+# Arquivos Proibidos (Documentos de TCC e rascunhos binários)
+*.docx
+*.pdf
+*.bak
+
+# Variáveis de ambiente e segredos
+.env
+.env.backup
+.env.production
+.env.local
+
+# Logs e diagnósticos
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# Caches e artefatos de build
+.phpunit.cache
+.phpunit.result.cache
+/public/build
+/public/hot
+/public/storage
+__pycache__/
+*.pyc
+
+# Diretórios temporários de rascunhos e processamento de mídia local
+tmp/
+output/
+cleaned_media/
+extracted_media/
+tcc_tovo_media/
+
+# Scripts, diagramas e pastas auxiliares locais fora do versionamento do app
+/docs/
+/.github/
+/.postman/
+/postman/
+/backend/docs/
+/backend/README.md
+/analise_banco_dados.html
+/diagrama_casos_de_uso_a4.json
+/diagrama_der_a4.json
+/diagrama_er_mysql.html
+/diagramas_a4_em_pe.html
+/diagramas_tcc.html
+/editor_diagramas_a4.html
+/explicacao_unicidade_dias_ativos.html
+/generate_tcc_tovo_doc.py
+/gerar_diagrama_banco_alta_resolucao.py
+
+# Sistema operacional e editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
