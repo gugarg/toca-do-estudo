@@ -21,11 +21,11 @@ class DatabaseSeeder extends Seeder
     {
         $metricsService = app(AgregadorMetricasService::class);
 
-        // Garante pastas de sessions e avatars no storage
-        Storage::disk('public')->makeDirectory('sessions');
+        // Garante pastas de sessions (disco privado) e avatars (disco público) no storage
+        Storage::disk('local')->makeDirectory('sessions');
         Storage::disk('public')->makeDirectory('avatars');
 
-        // Função auxiliar para gerar um placeholder WebP real via GD
+        // Função auxiliar para gerar um placeholder WebP real via GD no disco privado
         $createMockWebp = function (string $text, int $colorR, int $colorG, int $colorB): string {
             $img = imagecreatetruecolor(800, 500);
             $bgColor = imagecolorallocate($img, $colorR, $colorG, $colorB);
@@ -39,7 +39,7 @@ class DatabaseSeeder extends Seeder
             $webpData = ob_get_clean();
             imagedestroy($img);
 
-            Storage::disk('public')->put($filename, $webpData);
+            Storage::disk('local')->put($filename, $webpData);
             return $filename;
         };
 
@@ -95,7 +95,10 @@ class DatabaseSeeder extends Seeder
         $now = Carbon::now();
         $dataIngressoDemo = $now->copy()->subDays(10);
 
-        // Membros (ingressaram antes das sessões de demonstração para aparecerem no mural/ranking)
+        $groupFiscais->forceFill(['data_criacao' => $dataIngressoDemo, 'data_edicao' => $dataIngressoDemo])->save();
+        $groupEng->forceFill(['data_criacao' => $dataIngressoDemo, 'data_edicao' => $dataIngressoDemo])->save();
+
+        // Membros (grupos fundados antes das sessões de demonstração para aparecerem no mural/ranking)
         $groupFiscais->membros()->attach([
             $matheus->id => ['papel' => 'proprietario', 'ingressou_em' => $dataIngressoDemo],
             $camila->id => ['papel' => 'membro', 'ingressou_em' => $dataIngressoDemo],
@@ -184,7 +187,7 @@ class DatabaseSeeder extends Seeder
             'grupo_id' => $groupFiscais->id,
             'usuario_id' => $camila->id,
             'tipo_reacao' => 'fire',
-            'created_at' => now(),
+            'data_criacao' => now(),
         ]);
 
         Reacao::create([
@@ -192,7 +195,7 @@ class DatabaseSeeder extends Seeder
             'grupo_id' => $groupFiscais->id,
             'usuario_id' => $leonardo->id,
             'tipo_reacao' => 'applause',
-            'created_at' => now(),
+            'data_criacao' => now(),
         ]);
 
         Reacao::create([
@@ -200,7 +203,7 @@ class DatabaseSeeder extends Seeder
             'grupo_id' => $groupEng->id,
             'usuario_id' => $matheus->id,
             'tipo_reacao' => 'books',
-            'created_at' => now(),
+            'data_criacao' => now(),
         ]);
 
         // Comentários nos murais vinculados às respectivas comunidades
@@ -209,7 +212,7 @@ class DatabaseSeeder extends Seeder
             'grupo_id' => $groupFiscais->id,
             'usuario_id' => $camila->id,
             'conteudo' => 'Excelente constância, Matheus! Parabéns pelo volume de questões!',
-            'created_at' => now()->subMinutes(45),
+            'data_criacao' => now()->subMinutes(45),
         ]);
 
         \App\Models\Comentario::create([
@@ -217,7 +220,7 @@ class DatabaseSeeder extends Seeder
             'grupo_id' => $groupFiscais->id,
             'usuario_id' => $leonardo->id,
             'conteudo' => 'Inspirador! Bora manter o ritmo diário.',
-            'created_at' => now()->subMinutes(20),
+            'data_criacao' => now()->subMinutes(20),
         ]);
     }
 }

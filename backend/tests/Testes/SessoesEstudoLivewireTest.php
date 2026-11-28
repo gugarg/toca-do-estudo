@@ -126,6 +126,7 @@ class SessoesEstudoLivewireTest extends TestCase
 
     public function test_usuario_pode_criar_sessao_com_upload_de_foto_convertida_para_webp(): void
     {
+        Storage::fake('local');
         Storage::fake('public');
 
         $usuario = Usuario::factory()->create();
@@ -146,7 +147,8 @@ class SessoesEstudoLivewireTest extends TestCase
         $this->assertNotNull($sessao->photo_path);
         $this->assertStringEndsWith('.webp', $sessao->photo_path);
 
-        Storage::disk('public')->assertExists($sessao->photo_path);
+        Storage::disk('local')->assertExists($sessao->photo_path);
+        Storage::disk('public')->assertMissing($sessao->photo_path);
     }
 
     public function test_card_de_sessao_pode_alternar_reacao_de_incentivo_kudos(): void
@@ -311,13 +313,13 @@ class SessoesEstudoLivewireTest extends TestCase
 
     public function test_exclusao_de_sessao_remove_fisicamente_a_foto_do_disco_e_apaga_em_cascata(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
 
         $autor = Usuario::factory()->create();
         $grupo = $this->criarGrupo($autor);
         $grupo->members()->attach($autor->id, ['papel' => 'proprietario', 'ingressou_em' => now()]);
-        $caminhoFoto = 'sessoes/fotos/comprovacao_teste.webp';
-        Storage::disk('public')->put($caminhoFoto, 'conteudo-fake-webp');
+        $caminhoFoto = 'sessions/comprovacao_teste.webp';
+        Storage::disk('local')->put($caminhoFoto, 'conteudo-fake-webp');
 
         $sessao = $this->criarSessao($autor, ['photo_path' => $caminhoFoto]);
         Comentario::create([
@@ -334,7 +336,7 @@ class SessoesEstudoLivewireTest extends TestCase
 
         $this->assertDatabaseMissing('sessoes_estudo', ['id' => $sessao->id]);
         $this->assertDatabaseMissing('comentarios_sessao_estudo', ['sessao_estudo_id' => $sessao->id]);
-        Storage::disk('public')->assertMissing($caminhoFoto);
+        Storage::disk('local')->assertMissing($caminhoFoto);
     }
 
     public function test_servico_aceita_exatamente_24_horas_e_rejeita_acrescimo(): void
@@ -536,6 +538,99 @@ class SessoesEstudoLivewireTest extends TestCase
             ->test(CardSessao::class, ['session' => $sessao, 'groupId' => $grupoA->id])
             ->assertSet('reactionsCount', 1)
             ->assertSet('commentsCount', 1);
+    }
+
+    public function test_rota_protegida_da_foto_bloqueia_visitante_outro_usuario_e_sessao_privada(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $autor = Usuario::factory()->create();
+        $colegaGrupo = Usuario::factory()->create();
+        $outroUsuario = Usuario::factory()->create();
+
+        $grupo = $this->criarGrupo($autor);
+        $grupo->members()->attach([
+            $autor->id => ['papel' => 'proprietario', 'ingressou_em' => now()],
+            $colegaGrupo->id => ['papel' => 'membro', 'ingressou_em' => now()],
+        ]);
+
+        $fotoCompartilhada = 'sessions/foto-compartilhada.webp';
+        $fotoPrivada = 'sessions/foto-privada.webp';
+        Storage::disk('local')->put($fotoCompartilhada, 'bytes-webp-compartilhada');
+        Storage::disk('local')->put($fotoPrivada, 'bytes-webp-privada');
+
+        $sessaoCompartilhada = $this->criarSessao($autor, [
+            'caminho_foto' => $fotoCompartilhada,
+            'compartilhar' => true,
+        ]);
+        $sessaoPrivada = $this->criarSessao($autor, [
+            'caminho_foto' => $fotoPrivada,
+            'compartilhar' => false,
+        ]);
+
+        $urlCompartilhada = route('sessoes.foto', ['sessao' => $sessaoCompartilhada->id]);
+        $urlPrivada = route('sessoes.foto', ['sessao' => $sessaoPrivada->id]);
+
+        // 1. Acesso sem login (visitante) deve ser bloqueado e redirecionado
+        $this->get($urlCompartilhada)->assertRedirect(route('login'));
+        $this->get($urlPrivada)->assertRedirect(route('login'));
+
+        // Card deve apontar para a rota protegida e nunca expor /storage/
+        Livewire::actingAs($autor)
+            ->test(CardSessao::class, ['session' => $sessaoCompartilhada, 'groupId' => $grupo->id])
+            ->assertSee($urlCompartilhada)
+            ->assertDontSee('/storage/sessions/');
+
+        // 2. Outro usuário sem grupo em comum não acessa nem a compartilhada nem a privada (403)
+        $this->actingAs($outroUsuario)->get($urlCompartilhada)->assertForbidden();
+        $this->actingAs($outroUsuario)->get($urlPrivada)->assertForbidden();
+
+        // 3. Mesmo um colega de grupo não pode abrir a foto de sessão privada (403)
+        $this->actingAs($colegaGrupo)->get($urlPrivada)->assertForbidden();
+        $this->actingAs($colegaGrupo)->get($urlCompartilhada)
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/webp');
+
+        // 4. O autor acessa tanto a privada quanto a compartilhada com cabeçalho sem cache público
+        $respostaAutor = $this->actingAs($autor)->get($urlPrivada);
+        $respostaAutor->assertOk()
+            ->assertHeader('Content-Type', 'image/webp');
+        $this->assertStringContainsString('no-store', (string) $respostaAutor->headers->get('Cache-Control'));
+
+        Storage::disk('public')->assertMissing($fotoCompartilhada);
+        Storage::disk('public')->assertMissing($fotoPrivada);
+    }
+
+    public function test_ex_membro_do_grupo_perde_acesso_a_foto_da_sessao_apos_sair_da_comunidade(): void
+    {
+        Storage::fake('local');
+
+        $autor = Usuario::factory()->create();
+        $colega = Usuario::factory()->create();
+
+        $grupo = $this->criarGrupo($autor);
+        $grupo->members()->attach([
+            $autor->id => ['papel' => 'proprietario', 'ingressou_em' => now()],
+            $colega->id => ['papel' => 'membro', 'ingressou_em' => now()],
+        ]);
+
+        $caminhoFoto = 'sessions/foto-ex-membro.webp';
+        Storage::disk('local')->put($caminhoFoto, 'bytes-webp-comunidade');
+
+        $sessao = $this->criarSessao($autor, [
+            'caminho_foto' => $caminhoFoto,
+            'compartilhar' => true,
+        ]);
+
+        $urlProtegida = route('sessoes.foto', ['sessao' => $sessao->id]);
+
+        // Enquanto membro da comunidade, consegue abrir a imagem
+        $this->actingAs($colega)->get($urlProtegida)->assertOk();
+
+        // Após sair do grupo, o ex-membro passa a receber 403 Forbidden no mesmo link
+        app(\App\Services\GrupoService::class)->sairGrupo($colega, $grupo);
+        $this->actingAs($colega)->get($urlProtegida)->assertForbidden();
     }
 }
 

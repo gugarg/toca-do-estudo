@@ -37,6 +37,7 @@ class PerfilLivewireTest extends TestCase
         $response->assertOk();
         $response->assertSee('Lucas Mendonça');
         $response->assertSee('lucas@tocadoestudo.local');
+        $response->assertDontSee('Conta Verificada');
 
         Livewire::actingAs($user)
             ->test(EditarPerfil::class)

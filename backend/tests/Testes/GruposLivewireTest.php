@@ -511,7 +511,7 @@ class GruposLivewireTest extends TestCase
         ]);
     }
 
-    public function test_sessao_anterior_a_criacao_ou_entrada_no_grupo_nao_aparece_no_mural_nem_aceita_interacao(): void
+    public function test_sessao_anterior_a_criacao_do_grupo_nao_aparece_no_mural_nem_aceita_interacao(): void
     {
         $estudanteA = Usuario::factory()->create(['nome' => 'Estudante A']);
         $estudanteB = Usuario::factory()->create(['nome' => 'Estudante B']);
@@ -538,13 +538,13 @@ class GruposLivewireTest extends TestCase
             $estudanteA->id => ['papel' => 'membro', 'ingressou_em' => now()],
         ]);
 
-        // No mural do grupo novo, a sessão de ontem NÃO aparece
+        // No mural do grupo novo, a sessão de ontem (anterior à criação do grupo) NÃO aparece
         $this->actingAs($estudanteB);
         Livewire::test(DetalhesGrupo::class, ['group' => $grupoNovo])
             ->assertDontSee('Direito Penal Antigo')
             ->assertSee('Nenhum estudo publicado neste grupo ainda.');
 
-        // Pelas regras de autorização (Policy), Estudante B não pode ver nem interagir na sessão anterior à entrada no grupo
+        // Pelas regras de autorização (Policy), Estudante B não pode ver nem interagir na sessão anterior à criação do grupo
         $this->assertFalse(Gate::forUser($estudanteB)->allows('view', $sessaoAntiga));
         $this->assertFalse(Gate::forUser($estudanteB)->allows('interagirNoGrupo', [$sessaoAntiga, $grupoNovo]));
 
@@ -587,6 +587,118 @@ class GruposLivewireTest extends TestCase
             'usuario_id' => $estudanteB->id,
             'conteudo' => 'Bons estudos hoje!',
         ]);
+    }
+
+    public function test_sessao_apos_criacao_do_grupo_aparece_no_mural_e_aceita_interacao_mesmo_entrando_depois(): void
+    {
+        $estudanteA = Usuario::factory()->create(['nome' => 'Estudante A']);
+        $estudanteB = Usuario::factory()->create(['nome' => 'Estudante B']);
+
+        // Grupo fundado há 5 dias
+        $dataCriacaoGrupo = now()->subDays(5);
+        $grupoExistente = Grupo::create([
+            'proprietario_id' => $estudanteB->id,
+            'nome' => 'Grupo Já Existente',
+            'codigo_convite' => 'EXIS-2026',
+            'metrica_padrao' => 'dias_ativos',
+        ]);
+        $grupoExistente->forceFill([
+            'data_criacao' => $dataCriacaoGrupo,
+            'data_edicao' => $dataCriacaoGrupo,
+        ])->save();
+
+        // Estudante A estudou há 2 dias (DEPOIS da criação do grupo, mas ANTES de ingressar nele)
+        $sessaoEntreCriacaoEEntrada = SessaoEstudo::create([
+            'usuario_id' => $estudanteA->id,
+            'data_estudo' => now()->subDays(2)->toDateString(),
+            'disciplina' => 'Direito Constitucional Pós-Criação',
+            'minutos' => 90,
+            'questoes' => 30,
+            'compartilhar' => true,
+        ]);
+
+        // Estudante A ingressa hoje no grupo
+        $grupoExistente->members()->attach([
+            $estudanteB->id => ['papel' => 'proprietario', 'ingressou_em' => $dataCriacaoGrupo],
+            $estudanteA->id => ['papel' => 'membro', 'ingressou_em' => now()],
+        ]);
+
+        // A sessão feita após a criação do grupo deve aparecer no mural e permitir comentários
+        $this->actingAs($estudanteB);
+        Livewire::test(DetalhesGrupo::class, ['group' => $grupoExistente])
+            ->assertSee('Direito Constitucional Pós-Criação');
+
+        $this->assertTrue(Gate::forUser($estudanteB)->allows('view', $sessaoEntreCriacaoEEntrada));
+        $this->assertTrue(Gate::forUser($estudanteB)->allows('interagirNoGrupo', [$sessaoEntreCriacaoEEntrada, $grupoExistente]));
+
+        Livewire::actingAs($estudanteB)
+            ->test(CardSessao::class, ['session' => $sessaoEntreCriacaoEEntrada, 'groupId' => $grupoExistente->id])
+            ->set('newCommentText', 'Bem-vindo ao grupo!')
+            ->call('addComment');
+
+        $this->assertDatabaseHas('comentarios_sessao_estudo', [
+            'sessao_estudo_id' => $sessaoEntreCriacaoEEntrada->id,
+            'grupo_id' => $grupoExistente->id,
+            'usuario_id' => $estudanteB->id,
+            'conteudo' => 'Bem-vindo ao grupo!',
+        ]);
+    }
+
+    public function test_mural_da_comunidade_pagina_sessoes_de_dez_em_dez_e_reseta_ao_trocar_grupo(): void
+    {
+        $estudante = Usuario::factory()->create(['nome' => 'Maratonista']);
+        $dataFundacao = now()->subDays(15);
+
+        $grupoA = Grupo::create([
+            'proprietario_id' => $estudante->id,
+            'nome' => 'Comunidade Lotada',
+            'codigo_convite' => 'TOCA-PAG01',
+            'metrica_padrao' => 'dias_ativos',
+        ]);
+        $grupoA->forceFill(['data_criacao' => $dataFundacao, 'data_edicao' => $dataFundacao])->save();
+        $grupoA->members()->attach($estudante->id, ['papel' => 'proprietario', 'ingressou_em' => $dataFundacao]);
+
+        $grupoB = Grupo::create([
+            'proprietario_id' => $estudante->id,
+            'nome' => 'Comunidade Recente',
+            'codigo_convite' => 'TOCA-PAG02',
+            'metrica_padrao' => 'dias_ativos',
+        ]);
+        $grupoB->forceFill(['data_criacao' => now(), 'data_edicao' => now()])->save();
+        $grupoB->members()->attach($estudante->id, ['papel' => 'proprietario', 'ingressou_em' => now()]);
+
+        // 12 estudos nos últimos dias (Item 01 mais antigo -> Item 12 mais recente)
+        for ($i = 1; $i <= 12; $i++) {
+            SessaoEstudo::create([
+                'usuario_id' => $estudante->id,
+                'data_estudo' => now()->subDays(12 - $i)->toDateString(),
+                'disciplina' => sprintf('Estudo Mural %02d', $i),
+                'minutos' => 60,
+                'questoes' => 15,
+                'compartilhar' => true,
+            ]);
+        }
+
+        $this->actingAs($estudante);
+
+        $componente = Livewire::test(DetalhesGrupo::class, ['group' => $grupoA])
+            ->assertSee('Estudo Mural 12')
+            ->assertSee('Estudo Mural 03')
+            ->assertDontSee('Estudo Mural 02')
+            ->assertDontSee('Estudo Mural 01')
+            ->assertSee('Anterior')
+            ->assertSee('Próxima');
+
+        // Página 2 exibe os 2 estudos restantes do grupo A
+        $componente->call('gotoPage', 2)
+            ->assertSee('Estudo Mural 02')
+            ->assertSee('Estudo Mural 01')
+            ->assertDontSee('Estudo Mural 12');
+
+        // Ao trocar para o grupo B (que foi criado hoje e só possui o Estudo Mural 12), reseta para a página 1
+        $componente->call('selectGroup', $grupoB->id)
+            ->assertSee('Estudo Mural 12')
+            ->assertDontSee('Estudo Mural 01');
     }
 }
 

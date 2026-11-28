@@ -249,6 +249,8 @@
                                 @livewire('sessoes-estudo.card-sessao', ['session' => $sessao, 'groupId' => $currentGroup->id], key('group-session-' . $currentGroup->id . '-card-' . $sessao->id))
                             @endforeach
                         </div>
+
+                        {{ $feedSessions->links('components.paginacao') }}
                     @endif
                 </div>
             @else

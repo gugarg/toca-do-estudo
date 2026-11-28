@@ -49,7 +49,7 @@ class SessaoEstudoService
             $photoPath = null;
 
             if ($photo !== null) {
-                $photoPath = $this->pipelineImagem->processarEConverterParaWebP($photo, 'sessions');
+                $photoPath = $this->pipelineImagem->processarEConverterParaWebP($photo, 'sessions', 'local');
             }
 
             $compartilhar = true;
@@ -106,17 +106,17 @@ class SessaoEstudoService
                 // O callback não é persistente: uma interrupção pode deixar um arquivo órfão.
                 DB::afterCommit(function () use ($caminhoFoto) {
                     try {
-                        $disco = Storage::disk('public');
+                        $disco = Storage::disk('local');
                         if ($disco->exists($caminhoFoto)
                             && (!$disco->delete($caminhoFoto) || $disco->exists($caminhoFoto))) {
                             Log::warning('Não foi possível remover a fotografia de uma sessão excluída.', [
-                                'disco' => 'public', 'caminho' => $caminhoFoto,
+                                'disco' => 'local', 'caminho' => $caminhoFoto,
                             ]);
                         }
                     } catch (\Throwable $erro) {
                         // A sessão já foi excluída; a falha no disco não desfaz o commit.
                         Log::warning('Falha ao remover a fotografia de uma sessão excluída.', [
-                            'disco' => 'public', 'caminho' => $caminhoFoto,
+                            'disco' => 'local', 'caminho' => $caminhoFoto,
                             'exception' => $erro,
                         ]);
                     }

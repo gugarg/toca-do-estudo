@@ -79,6 +79,8 @@
                         @livewire('sessoes-estudo.card-sessao', ['session' => $sessao], key('session-card-' . $sessao->id))
                     @endforeach
                 </div>
+
+                {{ $recentSessions->links('components.paginacao') }}
             @endif
         </div>
 

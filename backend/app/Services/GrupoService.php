@@ -6,7 +6,6 @@ namespace App\Services;
 
 use App\Models\Grupo;
 use App\Models\Usuario;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -15,15 +14,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class GrupoService
 {
-    public function __construct(
-        private readonly PipelineImagemService $pipelineImagem,
-    ) {}
-
     /**
      * Cria um novo grupo de estudos com código de convite único.
      * Suporta exclusivamente duas modalidades: 'dias_ativos' e 'horas_questoes'.
      */
-    public function criarGrupo(Usuario $owner, array $data, ?UploadedFile $coverPhoto = null): Grupo
+    public function criarGrupo(Usuario $owner, array $data): Grupo
     {
         $rawMetric = $data['metrica_padrao'] ?? $data['default_metric'] ?? 'dias_ativos';
 
@@ -52,12 +47,7 @@ class GrupoService
             $pontosQuestao = round((float) $rawPontosQuestao, 2);
         }
 
-        return DB::transaction(function () use ($owner, $data, $coverPhoto, $metric, $pontosHora, $pontosQuestao) {
-            $coverUrl = null;
-            if ($coverPhoto !== null) {
-                $coverUrl = $this->pipelineImagem->processarEConverterParaWebP($coverPhoto, 'groups');
-            }
-
+        return DB::transaction(function () use ($owner, $data, $metric, $pontosHora, $pontosQuestao) {
             // Gera um código alfanumérico curto e amigável (formato TOCA-XXXXXX) para compartilhamento rápido entre colegas
             $inviteCode = $this->gerarCodigoConviteUnico();
 
@@ -65,7 +55,6 @@ class GrupoService
                 'proprietario_id' => $owner->id,
                 'nome' => $data['nome'] ?? $data['name'],
                 'descricao' => $data['descricao'] ?? $data['description'] ?? null,
-                'url_capa' => $coverUrl,
                 'codigo_convite' => $inviteCode,
                 'metrica_padrao' => $metric,
                 'pontos_hora' => $pontosHora,

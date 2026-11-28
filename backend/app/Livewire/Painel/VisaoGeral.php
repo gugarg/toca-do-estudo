@@ -12,17 +12,26 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 #[Title('Toca do Estudo')]
 class VisaoGeral extends Component
 {
+    use WithPagination;
+
     #[On('session-created')]
+    public function onSessionCreated(): void
+    {
+        // Volta para a primeira página para exibir o novo registro no topo
+        $this->resetPage();
+    }
+
     #[On('session-deleted')]
     #[On('refresh-dashboard')]
     public function refresh(): void
     {
-        // Re-renderiza o componente reativamente quando um novo estudo é lançado
+        // Re-renderiza o componente reativamente quando houver exclusão ou atualização
     }
 
     public function render(AgregadorMetricasService $metricasService)
@@ -41,14 +50,20 @@ class VisaoGeral extends Component
             'groups_count' => $user->grupos()->count(),
         ];
 
-        // 1. Últimas 5 sessões de estudo
-        $recentSessions = $user->sessoesEstudo()
+        // 1. Histórico paginado de sessões de estudo (5 por página)
+        $consultarSessoes = fn () => $user->sessoesEstudo()
             ->with(['reacoes', 'usuario'])
             ->withCount('comentarios')
             ->orderBy('data_estudo', 'desc')
             ->orderBy('id', 'desc')
-            ->limit(5)
-            ->get();
+            ->paginate(5);
+
+        $recentSessions = $consultarSessoes();
+
+        if ($recentSessions->isEmpty() && $recentSessions->currentPage() > 1 && $recentSessions->lastPage() >= 1) {
+            $this->setPage($recentSessions->lastPage());
+            $recentSessions = $consultarSessoes();
+        }
 
         // 2. Grupos do estudante
         $groups = $user->grupos()

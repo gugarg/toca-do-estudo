@@ -14,6 +14,9 @@ class Reacao extends Model
 
     public const ALLOWED_REACTIONS = ['fire', 'books', 'applause', 'target', 'brain'];
 
+    public const CREATED_AT = 'data_criacao';
+    public const UPDATED_AT = null;
+
     public $timestamps = false;
 
     protected $table = 'reacoes';
@@ -23,7 +26,7 @@ class Reacao extends Model
         'grupo_id',
         'usuario_id',
         'tipo_reacao',
-        'created_at',
+        'data_criacao',
         // Aliases para retrocompatibilidade
         'study_session_id',
         'group_id',
@@ -34,7 +37,7 @@ class Reacao extends Model
     protected function casts(): array
     {
         return [
-            'created_at' => 'datetime',
+            'data_criacao' => 'datetime',
         ];
     }
 

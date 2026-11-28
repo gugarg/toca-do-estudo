@@ -14,6 +14,9 @@ class Grupo extends Model
 {
     use HasFactory;
 
+    public const CREATED_AT = 'data_criacao';
+    public const UPDATED_AT = 'data_edicao';
+
     public const MODALIDADE_DIAS_ATIVOS = 'dias_ativos';
     public const MODALIDADE_HORAS_QUESTOES = 'horas_questoes';
 
@@ -21,7 +24,6 @@ class Grupo extends Model
         'proprietario_id',
         'nome',
         'descricao',
-        'url_capa',
         'codigo_convite',
         'metrica_padrao',
         'pontos_hora',
@@ -30,7 +32,6 @@ class Grupo extends Model
         'owner_id',
         'name',
         'description',
-        'cover_url',
         'invite_code',
         'default_metric',
         'points_per_hour',
@@ -86,16 +87,6 @@ class Grupo extends Model
     public function setDescriptionAttribute(?string $value): void
     {
         $this->attributes['descricao'] = $value;
-    }
-
-    public function getCoverUrlAttribute(): ?string
-    {
-        return $this->attributes['url_capa'] ?? null;
-    }
-
-    public function setCoverUrlAttribute(?string $value): void
-    {
-        $this->attributes['url_capa'] = $value;
     }
 
     public function getInviteCodeAttribute(): ?string
@@ -166,7 +157,7 @@ class Grupo extends Model
     {
         return $this->belongsToMany(SessaoEstudo::class, 'membros_grupo', 'grupo_id', 'usuario_id', 'id', 'usuario_id')
             ->where('sessoes_estudo.compartilhar', true)
-            ->whereRaw('sessoes_estudo.data_estudo >= DATE(membros_grupo.ingressou_em)');
+            ->whereRaw('sessoes_estudo.data_estudo >= (SELECT DATE(g.data_criacao) FROM grupos g WHERE g.id = membros_grupo.grupo_id)');
     }
 
     public function sessions(): BelongsToMany

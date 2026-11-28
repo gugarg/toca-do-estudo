@@ -15,6 +15,9 @@ class Usuario extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    public const CREATED_AT = 'data_criacao';
+    public const UPDATED_AT = 'data_edicao';
+
     protected $table = 'usuarios';
 
     protected $fillable = [
@@ -37,8 +40,9 @@ class Usuario extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'data_criacao' => 'datetime',
+            'data_edicao' => 'datetime',
         ];
     }
 

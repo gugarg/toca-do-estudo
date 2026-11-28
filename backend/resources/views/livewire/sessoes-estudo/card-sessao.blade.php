@@ -16,13 +16,6 @@
                 <div class="feed-date-row">
                     <x-icon name="calendar" size="11" />
                     <span>{{ $session->study_date ? \Carbon\Carbon::parse($session->study_date)->format('d/m/Y') : '' }}</span>
-
-                    @if(!$isToday)
-                        <span class="feed-retro-tag" title="Sessão registrada retroativamente em até 7 dias">
-                            <x-icon name="history" size="10" />
-                            <span>Retroativo</span>
-                        </span>
-                    @endif
                 </div>
             </div>
         </div>
@@ -97,7 +90,7 @@
     <!-- ========================================================================= -->
     @php
         $fotoPath = $session->photo_path ?? $session->caminho_foto ?? null;
-        $fotoUrl = $fotoPath ? asset('storage/' . ltrim($fotoPath, '/')) : null;
+        $fotoUrl = $fotoPath ? route('sessoes.foto', ['sessao' => $session->id]) : null;
     @endphp
 
     @if($fotoUrl)
@@ -239,7 +232,7 @@
                                             </a>
                                         @endif
                                         <span class="comment-time" style="font-size: 11px; color: var(--text-muted);">
-                                            {{ $comment->created_at ? $comment->created_at->diffForHumans() : '' }}
+                                            {{ $comment->data_criacao ? $comment->data_criacao->diffForHumans() : '' }}
                                         </span>
                                     </div>
 

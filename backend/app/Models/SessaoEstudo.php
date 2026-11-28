@@ -15,6 +15,9 @@ class SessaoEstudo extends Model
 {
     use HasFactory;
 
+    public const CREATED_AT = 'data_criacao';
+    public const UPDATED_AT = 'data_edicao';
+
     /**
      * Limite máximo de dias corridos permitidos para lançamento de estudos retroativos.
      */

@@ -224,10 +224,10 @@
                 <div style="background-color: var(--bg-surface-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                     <div>
                         <label for="toggle-compartilhar" style="font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer; display: block;">
-                            Compartilhar nos Murais das Comunidades
+                            Compartilhar nos Murais e Rankings das Comunidades
                         </label>
                         <p style="font-size: 11px; color: var(--text-muted); margin: 2px 0 0 0;">
-                            Ao ativar, esta sessão aparecerá nos murais e contará nos rankings das comunidades das quais você já participa nesta data de estudo (estudos anteriores à entrada em um grupo não contam retroativamente para ele).
+                            Ao ativar, este estudo aparece nos murais e conta nos rankings das suas comunidades, desde que tenha sido feito a partir da data de criação de cada grupo.
                         </p>
                     </div>
                     <input type="checkbox"

@@ -49,15 +49,9 @@
 
             <!-- Identificação e Bio Resumida -->
             <div style="flex: 1;">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <h1 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; letter-spacing: -0.015em;">
-                        {{ $user->name }}
-                    </h1>
-                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: var(--radius-sm); background-color: rgba(37, 99, 235, 0.12); color: var(--metric-hours); font-size: 11px; font-weight: 500;">
-                        <x-icon name="sparkles" size="11" />
-                        <span>Conta Verificada</span>
-                    </span>
-                </div>
+                <h1 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin: 0; letter-spacing: -0.015em;">
+                    {{ $user->name }}
+                </h1>
 
                 <p style="font-size: 13px; color: var(--text-muted); margin: 4px 0 0 0;">
                     {{ $user->email }}

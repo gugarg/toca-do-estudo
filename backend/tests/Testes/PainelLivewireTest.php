@@ -144,5 +144,42 @@ class PainelLivewireTest extends TestCase
         $this->assertSame(1, $ocorrencias, 'O painel deve conter exatamente um botão "Registrar Estudo".');
         $this->assertStringContainsString("abrir-modal-sessao", $conteudo);
     }
+
+    public function test_painel_pagina_historico_de_estudos_de_cinco_em_cinco(): void
+    {
+        $usuario = Usuario::factory()->create();
+
+        // Cria 7 sessões em dias distintos: Estudo 01 (mais antigo) até Estudo 07 (mais recente)
+        for ($i = 1; $i <= 7; $i++) {
+            SessaoEstudo::create([
+                'usuario_id' => $usuario->id,
+                'data_estudo' => Carbon::today()->subDays(7 - $i)->toDateString(),
+                'disciplina' => sprintf('Disciplina Painel %02d', $i),
+                'minutos' => 60,
+                'questoes' => 10,
+            ]);
+        }
+
+        $this->actingAs($usuario);
+
+        $componente = Livewire::test(VisaoGeral::class)
+            ->assertSee('Disciplina Painel 07')
+            ->assertSee('Disciplina Painel 03')
+            ->assertDontSee('Disciplina Painel 02')
+            ->assertDontSee('Disciplina Painel 01')
+            ->assertSee('Anterior')
+            ->assertSee('Próxima');
+
+        // Avança para a página 2 e confere os registros mais antigos
+        $componente->call('nextPage')
+            ->assertSee('Disciplina Painel 02')
+            ->assertSee('Disciplina Painel 01')
+            ->assertDontSee('Disciplina Painel 07');
+
+        // Retorna para a página 1
+        $componente->call('previousPage')
+            ->assertSee('Disciplina Painel 07')
+            ->assertDontSee('Disciplina Painel 01');
+    }
 }
 

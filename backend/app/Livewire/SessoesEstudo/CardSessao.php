@@ -10,7 +10,6 @@ use App\Models\Reacao;
 use App\Models\SessaoEstudo;
 use App\Models\Usuario;
 use App\Services\SessaoEstudoService;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
@@ -155,7 +154,7 @@ class CardSessao extends Component
                 ],
                 [
                     'tipo_reacao' => $reactionType,
-                    'created_at' => now(),
+                    'data_criacao' => now(),
                 ]
             );
             $this->userReaction = $reactionType;
@@ -329,7 +328,7 @@ class CardSessao extends Component
     public function render()
     {
         if ($this->showComments) {
-            $query = $this->session->comentarios()->orderBy('created_at', 'asc');
+            $query = $this->session->comentarios()->orderBy('data_criacao', 'asc');
             if ($this->groupId !== null) {
                 $query->where('grupo_id', $this->groupId)->with('usuario');
             } else {
@@ -340,12 +339,8 @@ class CardSessao extends Component
             $comments = collect();
         }
 
-        $studyDateObj = $this->session->data_estudo;
-        $isToday = $studyDateObj ? Carbon::parse($studyDateObj)->isToday() : false;
-
         return view('livewire.sessoes-estudo.card-sessao', [
             'comments' => $comments,
-            'isToday' => $isToday,
             'canInteract' => $this->groupId !== null,
             'predefinedReactions' => self::PREDEFINED_REACTIONS,
         ]);

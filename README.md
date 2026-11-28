@@ -24,10 +24,10 @@ A plataforma organiza o acompanhamento de estudos em comunidades fechadas com fo
 - **Autenticação e perfil:** cadastro, login por e-mail e senha, recuperação de senha por token temporário e edição de nome, biografia e avatar.
 - **Registro de estudos:** lançamento de sessões com data, disciplina, duração (entre 5 minutos e 12 horas), questões resolvidas (0 a 1.000), anotações e controle individual de compartilhamento nos murais e rankings.
 - **Regras de consistência:** limite diário acumulado de 24 horas (1.440 minutos) validado em transação com bloqueio no banco, janela retroativa de até 7 dias corridos e contagem de Dias Ativos por datas distintas (múltiplas sessões no mesmo dia somam horas e questões, mas contam apenas 1 Dia Ativo).
-- **Registro visual opcional:** anexo de fotografias convertidas automaticamente para WebP via extensão GD, com remoção de metadados EXIF, nomeação por UUID v4 e visualização ampliada via Lightbox.
+- **Registro visual opcional:** anexo de fotografias convertidas automaticamente para WebP via extensão GD, com remoção de metadados EXIF, nomeação por UUID v4, armazenamento em disco privado com controle de acesso via Policy e visualização ampliada via Lightbox.
 - **Comunidades fechadas:** criação de grupos com código de convite, edição de nome e descrição pelo proprietário, bloqueio de entrada duplicada e saída de membros comuns.
-- **Classificações e desempate:** duas modalidades fixas definidas na criação do grupo (`Dias Ativos` ou `Horas Líquidas + Questões` com pesos imutáveis), filtros por período (`Semana`, `Mês` e `Geral`), isolamento temporal à data de ingresso do membro (estudos anteriores à entrada não contam retroativamente) e desempate em quatro níveis (minutos exatos, questões resolvidas, Dias Ativos e menor ID de usuário).
-- **Mural social:** exibição das 20 sessões compartilhadas mais recentes da comunidade, reações predefinidas de incentivo e comentários vinculados à comunidade em que foram feitos (com edição e exclusão restritas ao autor).
+- **Classificações e desempate:** duas modalidades fixas definidas na criação do grupo (`Dias Ativos` ou `Horas Líquidas + Questões` com pesos imutáveis), filtros por período (`Semana`, `Mês` e `Geral`), corte temporal pela data de criação do grupo (estudos feitos antes da fundação do grupo não entram no mural nem no ranking, mas estudos realizados a partir da criação passam a contar mesmo ao ingressar depois) e desempate em quatro níveis (minutos exatos, questões resolvidas, Dias Ativos e menor ID de usuário).
+- **Mural social e histórico paginado:** mural da comunidade e histórico do painel com paginação numerada (10 estudos por página nos grupos e 5 no painel pessoal), reações predefinidas de incentivo e comentários vinculados à comunidade em que foram feitos (com edição e exclusão restritas ao autor).
 
 ## Tecnologias utilizadas
 
@@ -123,11 +123,11 @@ cd backend
 php artisan test
 ```
 
-Resultado da execução atual da suíte: **75 testes aprovados (330 asserções)**, distribuídos em:
+Resultado da execução atual da suíte: **80 testes aprovados (380 asserções)**, distribuídos em:
 
-- Autenticação, painel e perfil (23 testes)
-- Comunidades e participação (17 testes)
-- Registro de estudos (16 testes)
+- Autenticação, painel e perfil (24 testes)
+- Comunidades e participação (19 testes)
+- Registro de estudos (18 testes)
 - Integridade transacional e processamento de imagens (11 testes)
 - Classificação e métricas (8 testes)
 
@@ -145,6 +145,7 @@ Todas as rotas atendem a interface web em Livewire / Blade:
 | GET | `/comunidades` | `/groups` | Autenticado |
 | GET | `/comunidades/{grupo}` | `/groups/{group}` | Autenticado |
 | GET | `/perfil` | `/profile` | Autenticado |
+| GET | `/sessoes/{sessao}/foto` | — | Autenticado (`Policy`) |
 | POST | `/sair` | `/logout` | Autenticado |
 
 ## Configuração de e-mail (SMTP)

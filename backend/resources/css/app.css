@@ -650,19 +650,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-top: 2px;
 }
 
-.feed-retro-tag {
-  font-size: 10px;
-  font-weight: 500;
-  background-color: var(--bg-surface-subtle);
-  color: var(--metric-questions);
-  border: 1px solid var(--metric-questions-border);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
 .feed-subject-block {
   margin: 4px 0 14px 0;
 }
@@ -1027,5 +1014,78 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     width: 220px !important;
     height: 220px !important;
   }
+}
+
+/* Paginação dos Murais e Painel */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.pagination-info {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.pagination-btn:hover:not(:disabled):not(.is-active) {
+  background-color: var(--bg-surface-elevated);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.pagination-btn.is-active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: default;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pagination-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 32px;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 

@@ -13,11 +13,13 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 #[Layout('layouts.app')]
 #[Title('Toca do Estudo')]
 class DetalhesGrupo extends Component
 {
+    use WithPagination;
     public ?int $groupId = null;
     public string $activeTab = 'feed'; // 'feed' | 'leaderboard'
     public string $metric = 'dias_ativos'; // 'dias_ativos' | 'horas' | 'questoes' (aceita também active_days, hours, questions)
@@ -76,10 +78,15 @@ class DetalhesGrupo extends Component
     }
 
     #[On('session-created')]
+    public function onSessionCreated(): void
+    {
+        $this->resetPage();
+    }
+
     #[On('session-deleted')]
     public function refreshFeed(): void
     {
-        // Força a re-renderização do feed e do ranking quando houver alteração de sessões
+        // Força a re-renderização do feed e do ranking quando houver remoção de sessões
     }
 
     public function selectGroup(int $id): void
@@ -92,6 +99,7 @@ class DetalhesGrupo extends Component
             $this->groupId = $group->id;
             $this->metric = $group->metrica_padrao ?? 'dias_ativos';
             $this->feedbackMessage = null;
+            $this->resetPage();
         }
     }
 
@@ -181,6 +189,7 @@ class DetalhesGrupo extends Component
             $this->groupId = $grupo->id;
             $this->metric = $grupo->metrica_padrao;
             $this->showCreateModal = false;
+            $this->resetPage();
             $this->feedbackMessage = "Comunidade '{$grupo->nome}' criada com sucesso! Código de convite: {$grupo->codigo_convite}";
         } catch (\Throwable $e) {
             $this->modalError = $e->getMessage();
@@ -219,6 +228,7 @@ class DetalhesGrupo extends Component
             $this->groupId = $grupo->id;
             $this->metric = $grupo->metrica_padrao;
             $this->showJoinModal = false;
+            $this->resetPage();
             $this->feedbackMessage = "Você entrou na comunidade '{$grupo->nome}'!";
         } catch (\Throwable $e) {
             $this->modalError = $e->getMessage();
@@ -314,6 +324,7 @@ class DetalhesGrupo extends Component
             // Seleciona a próxima comunidade disponível
             $proximo = $user->grupos()->first();
             $this->groupId = $proximo?->id;
+            $this->resetPage();
             $this->feedbackMessage = "Você saiu do grupo '{$group->nome}'.";
         } catch (\Throwable $e) {
             $this->modalError = $e->getMessage();
@@ -340,7 +351,7 @@ class DetalhesGrupo extends Component
 
             if ($this->activeTab === 'feed') {
                 $grupoIdAtual = $currentGroup->id;
-                $feedSessions = $currentGroup->sessoes()
+                $consultarFeed = fn () => $currentGroup->sessoes()
                     ->with([
                         'usuario',
                         'reacoes' => fn ($q) => $q->where('grupo_id', $grupoIdAtual),
@@ -350,8 +361,14 @@ class DetalhesGrupo extends Component
                     ])
                     ->orderBy('data_estudo', 'desc')
                     ->orderBy('id', 'desc')
-                    ->limit(20)
-                    ->get();
+                    ->paginate(10);
+
+                $feedSessions = $consultarFeed();
+
+                if ($feedSessions->isEmpty() && $feedSessions->currentPage() > 1 && $feedSessions->lastPage() >= 1) {
+                    $this->setPage($feedSessions->lastPage());
+                    $feedSessions = $consultarFeed();
+                }
             } else {
                 $leaderboard = $metricasService->obterClassificacaoGrupo(
                     $currentGroup,

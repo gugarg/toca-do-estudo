@@ -22,7 +22,7 @@ class PipelineImagemService
     ];
 
     // Processa a imagem enviada pelo estudante, ajusta as dimensões e converte para WebP garantindo alta compressão e privacidade.
-    public function processarEConverterParaWebP(UploadedFile $file, string $directory = 'sessions'): string
+    public function processarEConverterParaWebP(UploadedFile $file, string $directory = 'sessions', ?string $disk = null): string
     {
         // Garante a integridade do upload inspecionando os bytes reais via finfo em vez de confiar na extensão informada pelo cliente
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
@@ -92,11 +92,12 @@ class PipelineImagemService
             throw new RuntimeException("Falha ao codificar a imagem para o formato WebP.");
         }
 
-        // Salva o arquivo no disco público com um UUID único para evitar colisões
+        // Salva o arquivo no disco configurado ('local' para sessões privadas, 'public' para avatares) com UUID único
+        $targetDisk = $disk ?? ($directory === 'sessions' ? 'local' : 'public');
         $filename = Str::uuid()->toString() . '.webp';
         $path = "{$directory}/{$filename}";
 
-        Storage::disk('public')->put($path, $webpData);
+        Storage::disk($targetDisk)->put($path, $webpData);
 
         return $path;
     }
@@ -106,7 +107,7 @@ class PipelineImagemService
      * redimensiona e converte para WebP com remoção de metadados EXIF.
      * Utilizado pelo editor visual de corte de avatar.
      */
-    public function processarBase64ParaWebP(string $base64Data, string $directory = 'avatars'): string
+    public function processarBase64ParaWebP(string $base64Data, string $directory = 'avatars', ?string $disk = null): string
     {
         // Remove o prefixo data URI caso presente (ex: "data:image/png;base64,")
         if (str_contains($base64Data, ',')) {
@@ -179,10 +180,11 @@ class PipelineImagemService
             throw new RuntimeException("Falha ao codificar a imagem para o formato WebP.");
         }
 
+        $targetDisk = $disk ?? ($directory === 'sessions' ? 'local' : 'public');
         $filename = Str::uuid()->toString() . '.webp';
         $path = "{$directory}/{$filename}";
 
-        Storage::disk('public')->put($path, $webpData);
+        Storage::disk($targetDisk)->put($path, $webpData);
 
         return $path;
     }

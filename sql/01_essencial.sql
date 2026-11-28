@@ -14,10 +14,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- -----------------------------------------------------------------------------
 -- 0. LIMPEZA PREVENTIVA DE ESTRUTURAS EXISTENTES (ORDEM REVERSA DE DEPENDÊNCIAS)
 -- -----------------------------------------------------------------------------
-DROP TABLE IF EXISTS cache_estatisticas_usuario;
 DROP TABLE IF EXISTS comentarios_sessao_estudo;
 DROP TABLE IF EXISTS reacoes;
-DROP TABLE IF EXISTS visibilidades_sessao_grupo;
 DROP TABLE IF EXISTS sessoes_estudo;
 DROP TABLE IF EXISTS membros_grupo;
 DROP TABLE IF EXISTS grupos;
@@ -25,9 +23,6 @@ DROP TABLE IF EXISTS password_reset_tokens;
 DROP TABLE IF EXISTS sessions;
 DROP TABLE IF EXISTS cache_locks;
 DROP TABLE IF EXISTS cache;
-DROP TABLE IF EXISTS failed_jobs;
-DROP TABLE IF EXISTS job_batches;
-DROP TABLE IF EXISTS jobs;
 DROP TABLE IF EXISTS usuarios;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -40,13 +35,12 @@ CREATE TABLE usuarios (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     nome VARCHAR(120) NOT NULL,
     email VARCHAR(255) NOT NULL,
-    email_verified_at TIMESTAMP NULL,
     password VARCHAR(255) NOT NULL,
     url_avatar VARCHAR(255) NULL,
     biografia VARCHAR(250) NULL,
     remember_token VARCHAR(100) NULL,
-    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    data_criacao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    data_edicao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uk_usuarios_email UNIQUE (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -92,46 +86,7 @@ CREATE TABLE cache_locks (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 5. TABELAS: jobs, job_batches e failed_jobs (Queue Driver de Banco de Dados)
--- Processamento assíncrono e controle de tarefas em fila (QUEUE_CONNECTION=database).
--- -----------------------------------------------------------------------------
-CREATE TABLE jobs (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    queue VARCHAR(255) NOT NULL,
-    payload LONGTEXT NOT NULL,
-    attempts UNSIGNED TINYINT NOT NULL,
-    reserved_at INT UNSIGNED NULL,
-    available_at INT UNSIGNED NOT NULL,
-    created_at INT UNSIGNED NOT NULL,
-    INDEX idx_jobs_queue (queue)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE job_batches (
-    id VARCHAR(255) NOT NULL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    total_jobs INT NOT NULL,
-    pending_jobs INT NOT NULL,
-    failed_jobs INT NOT NULL,
-    failed_job_ids LONGTEXT NOT NULL,
-    options MEDIUMTEXT NULL,
-    cancelled_at INT NULL,
-    created_at INT NOT NULL,
-    finished_at INT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE failed_jobs (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    uuid VARCHAR(255) NOT NULL,
-    connection TEXT NOT NULL,
-    queue TEXT NOT NULL,
-    payload LONGTEXT NOT NULL,
-    exception LONGTEXT NOT NULL,
-    failed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT uk_failed_jobs_uuid UNIQUE (uuid)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- -----------------------------------------------------------------------------
--- 6. TABELA: grupos
+-- 5. TABELA: grupos
 -- Comunidades e salas de estudo compartilhadas entre alunos.
 -- -----------------------------------------------------------------------------
 CREATE TABLE grupos (
@@ -139,20 +94,19 @@ CREATE TABLE grupos (
     proprietario_id BIGINT UNSIGNED NOT NULL,
     nome VARCHAR(100) NOT NULL,
     descricao TEXT NULL,
-    url_capa VARCHAR(255) NULL,
     codigo_convite VARCHAR(12) NOT NULL,
     metrica_padrao VARCHAR(20) NOT NULL DEFAULT 'dias_ativos',
     pontos_hora DECIMAL(8,2) NULL,
     pontos_questao DECIMAL(8,2) NULL,
-    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    data_criacao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    data_edicao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT uk_grupos_codigo_convite UNIQUE (codigo_convite),
     INDEX idx_grupos_proprietario_id (proprietario_id),
     CONSTRAINT fk_grupos_proprietario FOREIGN KEY (proprietario_id) REFERENCES usuarios (id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 7. TABELA: membros_grupo
+-- 6. TABELA: membros_grupo
 -- Relação associativa N:N entre usuários e grupos com controle de papéis.
 -- Índices: UNIQUE em (grupo_id, usuario_id) e índice reverso (usuario_id, grupo_id).
 -- -----------------------------------------------------------------------------
@@ -169,7 +123,7 @@ CREATE TABLE membros_grupo (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 8. TABELA: sessoes_estudo
+-- 7. TABELA: sessoes_estudo
 -- Publicações individuais de estudo acadêmico com comprovação fotográfica.
 -- Índices cobrindo auditoria temporal e agregação indexada de feeds/rankings.
 -- -----------------------------------------------------------------------------
@@ -183,16 +137,15 @@ CREATE TABLE sessoes_estudo (
     anotacoes TEXT NULL,
     caminho_foto VARCHAR(255) NULL,
     compartilhar BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    data_criacao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    data_edicao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_sessoes_usuario_data (usuario_id, data_estudo),
-    INDEX idx_sessoes_usuario_compartilhar (usuario_id, compartilhar),
     INDEX idx_sessoes_estudo_feed_ranking (usuario_id, compartilhar, data_estudo),
     CONSTRAINT fk_sessoes_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 9. TABELA: reacoes (Kudos / Interações Sociais)
+-- 8. TABELA: reacoes (Kudos / Interações Sociais)
 -- Reações acadêmicas únicas por usuário, sessão de estudo e comunidade.
 -- -----------------------------------------------------------------------------
 CREATE TABLE reacoes (
@@ -201,7 +154,7 @@ CREATE TABLE reacoes (
     grupo_id BIGINT UNSIGNED NOT NULL,
     usuario_id BIGINT UNSIGNED NOT NULL,
     tipo_reacao VARCHAR(20) NOT NULL DEFAULT 'fire',
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_criacao TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY reacoes_sessao_usuario_grupo_unique (sessao_estudo_id, usuario_id, grupo_id),
     INDEX idx_reacoes_sessao_grupo (sessao_estudo_id, grupo_id),
     CONSTRAINT fk_reacoes_sessao FOREIGN KEY (sessao_estudo_id) REFERENCES sessoes_estudo (id) ON DELETE CASCADE,
@@ -210,7 +163,7 @@ CREATE TABLE reacoes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- 10. TABELA: comentarios_sessao_estudo
+-- 9. TABELA: comentarios_sessao_estudo
 -- Fórum de discussão e feedback acadêmico vinculado à comunidade onde foi publicado.
 -- -----------------------------------------------------------------------------
 CREATE TABLE comentarios_sessao_estudo (
@@ -219,10 +172,10 @@ CREATE TABLE comentarios_sessao_estudo (
     grupo_id BIGINT UNSIGNED NOT NULL,
     usuario_id BIGINT UNSIGNED NOT NULL,
     conteudo TEXT NOT NULL,
-    created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_comentarios_sessao_data (sessao_estudo_id, created_at),
-    INDEX idx_comentarios_sessao_grupo_data (sessao_estudo_id, grupo_id, created_at),
+    data_criacao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+    data_edicao TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_comentarios_sessao_data (sessao_estudo_id, data_criacao),
+    INDEX idx_comentarios_sessao_grupo_data (sessao_estudo_id, grupo_id, data_criacao),
     INDEX idx_comentarios_usuario (usuario_id),
     CONSTRAINT fk_comentarios_sessao FOREIGN KEY (sessao_estudo_id) REFERENCES sessoes_estudo (id) ON DELETE CASCADE,
     CONSTRAINT fk_comentarios_grupo FOREIGN KEY (grupo_id) REFERENCES grupos (id) ON DELETE CASCADE,

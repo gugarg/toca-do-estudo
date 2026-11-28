@@ -29,16 +29,18 @@ ON DUPLICATE KEY UPDATE
 -- -----------------------------------------------------------------------------
 -- 2. INSERÇÃO DAS COMUNIDADES / GRUPOS DE ESTUDO
 -- -----------------------------------------------------------------------------
-INSERT INTO grupos (id, proprietario_id, nome, descricao, codigo_convite, metrica_padrao, pontos_hora, pontos_questao) VALUES
-(1, 1, 'Fiscais 2026', 'Grupo de estudos focado em concursos fiscais e resolução massiva de exercícios.', 'TOCA-FISC26', 'horas_questoes', 10.00, 1.00),
-(2, 2, 'Engenharia & Café', 'Apoio mútuo para cálculo, física e matérias da faculdade.', 'TOCA-ENGCIV', 'dias_ativos', NULL, NULL),
-(3, 3, 'Devs Noturnos & Algoritmos', 'Grupo de consistência para quem estuda programação após o expediente.', 'RAT-CODE88', 'dias_ativos', NULL, NULL)
+INSERT INTO grupos (id, proprietario_id, nome, descricao, codigo_convite, metrica_padrao, pontos_hora, pontos_questao, data_criacao) VALUES
+(1, 1, 'Fiscais 2026', 'Grupo de estudos focado em concursos fiscais e resolução massiva de exercícios.', 'TOCA-FISC26', 'horas_questoes', 10.00, 1.00, '2026-09-01 00:00:00'),
+(2, 2, 'Engenharia & Café', 'Apoio mútuo para cálculo, física e matérias da faculdade.', 'TOCA-ENGCIV', 'dias_ativos', NULL, NULL, '2026-09-01 00:00:00'),
+(3, 3, 'Devs Noturnos & Algoritmos', 'Grupo de consistência para quem estuda programação após o expediente.', 'TOCA-CODE88', 'dias_ativos', NULL, NULL, '2026-09-01 00:00:00')
 ON DUPLICATE KEY UPDATE
     nome = VALUES(nome),
     descricao = VALUES(descricao),
+    codigo_convite = VALUES(codigo_convite),
     metrica_padrao = VALUES(metrica_padrao),
     pontos_hora = VALUES(pontos_hora),
-    pontos_questao = VALUES(pontos_questao);
+    pontos_questao = VALUES(pontos_questao),
+    data_criacao = VALUES(data_criacao);
 
 -- -----------------------------------------------------------------------------
 -- 3. INSERÇÃO DOS MEMBROS NAS COMUNIDADES
@@ -58,21 +60,22 @@ ON DUPLICATE KEY UPDATE
 -- -----------------------------------------------------------------------------
 -- 4. INSERÇÃO DE SESSÕES DE ESTUDO ACADÊMICAS
 -- -----------------------------------------------------------------------------
-INSERT INTO sessoes_estudo (id, usuario_id, data_estudo, disciplina, minutos, questoes, anotacoes, caminho_foto) VALUES
-(1, 1, '2026-09-12', 'Direito Tributário', 120, 45, 'Resolução de questões discursivas sobre hipóteses de suspensão do crédito tributário.', 'sessions/sample_tributario.webp'),
-(2, 1, '2026-09-13', 'Contabilidade Geral', 90, 30, 'Balanço patrimonial e demonstração de resultados de exercícios anteriores.', 'sessions/sample_contabilidade.webp'),
-(3, 1, '2026-09-14', 'Auditoria Fiscal', 150, 70, 'Procedimentos de amostragem estatística em auditorias aduaneiras.', 'sessions/sample_auditoria.webp'),
-(4, 2, '2026-09-13', 'Cálculo Numérico', 180, 20, 'Deduções teóricas do Método de Newton-Raphson aplicadas a matrizes.', 'sessions/sample_calculo.webp'),
-(5, 2, '2026-09-14', 'Mecânica dos Solos', 120, 15, 'Ensaio de compactação e determinação da umidade ótima de Proctor.', 'sessions/sample_solos.webp'),
-(6, 3, '2026-09-14', 'Estruturas de Dados', 75, 12, 'Implementação de árvores binárias balanceadas e tabelas hash em TypeScript.', 'sessions/sample_arvores.webp')
+INSERT INTO sessoes_estudo (id, usuario_id, data_estudo, disciplina, minutos, questoes, anotacoes, caminho_foto, compartilhar) VALUES
+(1, 1, '2026-09-12', 'Direito Tributário', 120, 45, 'Resolução de questões discursivas sobre hipóteses de suspensão do crédito tributário.', 'sessions/sample_tributario.webp', TRUE),
+(2, 1, '2026-09-13', 'Contabilidade Geral', 90, 30, 'Balanço patrimonial e demonstração de resultados de exercícios anteriores.', 'sessions/sample_contabilidade.webp', TRUE),
+(3, 1, '2026-09-14', 'Auditoria Fiscal', 150, 70, 'Procedimentos de amostragem estatística em auditorias aduaneiras.', 'sessions/sample_auditoria.webp', TRUE),
+(4, 2, '2026-09-13', 'Cálculo Numérico', 180, 20, 'Deduções teóricas do Método de Newton-Raphson aplicadas a matrizes.', 'sessions/sample_calculo.webp', TRUE),
+(5, 2, '2026-09-14', 'Mecânica dos Solos', 120, 15, 'Ensaio de compactação e determinação da umidade ótima de Proctor.', 'sessions/sample_solos.webp', TRUE),
+(6, 3, '2026-09-14', 'Estruturas de Dados', 75, 12, 'Implementação de árvores binárias balanceadas e tabelas hash em TypeScript.', 'sessions/sample_arvores.webp', TRUE)
 ON DUPLICATE KEY UPDATE
     disciplina = VALUES(disciplina),
     minutos = VALUES(minutos),
     questoes = VALUES(questoes),
-    anotacoes = VALUES(anotacoes);
+    anotacoes = VALUES(anotacoes),
+    compartilhar = VALUES(compartilhar);
 
 -- -----------------------------------------------------------------------------
--- 6. REAÇÕES SOCIAIS / KUDOS ACADÊMICOS (VINCULADAS À COMUNIDADE)
+-- 5. REAÇÕES SOCIAIS / KUDOS ACADÊMICOS (VINCULADAS À COMUNIDADE)
 -- -----------------------------------------------------------------------------
 INSERT INTO reacoes (sessao_estudo_id, grupo_id, usuario_id, tipo_reacao) VALUES
 (1, 1, 2, 'applause'),
@@ -85,7 +88,7 @@ ON DUPLICATE KEY UPDATE
     tipo_reacao = VALUES(tipo_reacao);
 
 -- -----------------------------------------------------------------------------
--- 7. COMENTÁRIOS DE DEMONSTRAÇÃO (VINCULADOS À COMUNIDADE)
+-- 6. COMENTÁRIOS DE DEMONSTRAÇÃO (VINCULADOS À COMUNIDADE)
 -- -----------------------------------------------------------------------------
 INSERT INTO comentarios_sessao_estudo (id, sessao_estudo_id, grupo_id, usuario_id, conteudo) VALUES
 (1, 1, 1, 2, 'Excelente resumo, Matheus! A jurisprudência sobre moratória sempre cai em prova.'),

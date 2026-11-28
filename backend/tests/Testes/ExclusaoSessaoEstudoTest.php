@@ -27,10 +27,10 @@ class ExclusaoSessaoEstudoTest extends TestCase
 
     private function criarSessao(): SessaoEstudo
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $usuario = Usuario::factory()->create();
         $caminho = 'sessions/exclusao-teste.webp';
-        Storage::disk('public')->put($caminho, 'foto-teste');
+        Storage::disk('local')->put($caminho, 'foto-teste');
 
         return SessaoEstudo::create([
             'usuario_id' => $usuario->id,
@@ -73,7 +73,7 @@ class ExclusaoSessaoEstudoTest extends TestCase
         $this->assertDatabaseMissing('sessoes_estudo', ['id' => $sessao->id]);
         $this->assertDatabaseMissing('comentarios_sessao_estudo', ['sessao_estudo_id' => $sessao->id]);
         $this->assertDatabaseMissing('reacoes', ['sessao_estudo_id' => $sessao->id]);
-        Storage::disk('public')->assertMissing($sessao->caminho_foto);
+        Storage::disk('local')->assertMissing($sessao->caminho_foto);
         $metricas = app(AgregadorMetricasService::class)->obterEstatisticasUsuario($autor->id);
         $this->assertSame(0, $metricas->total_minutos);
         $this->assertSame(0, $metricas->total_questoes);
@@ -95,7 +95,7 @@ class ExclusaoSessaoEstudoTest extends TestCase
         }
 
         $this->assertDatabaseHas('sessoes_estudo', ['id' => $sessao->id]);
-        Storage::disk('public')->assertExists($sessao->caminho_foto);
+        Storage::disk('local')->assertExists($sessao->caminho_foto);
     }
 
     public function test_foto_so_e_removida_apos_commit_da_transacao_externa(): void
@@ -104,14 +104,14 @@ class ExclusaoSessaoEstudoTest extends TestCase
         DB::beginTransaction();
         try {
             app(SessaoEstudoService::class)->excluirSessao($sessao->usuario, $sessao);
-            Storage::disk('public')->assertExists($sessao->caminho_foto);
+            Storage::disk('local')->assertExists($sessao->caminho_foto);
             DB::commit();
         } finally {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
         }
-        Storage::disk('public')->assertMissing($sessao->caminho_foto);
+        Storage::disk('local')->assertMissing($sessao->caminho_foto);
     }
 
     public function test_rollback_externo_descarta_remocao_da_fotografia(): void
@@ -124,18 +124,18 @@ class ExclusaoSessaoEstudoTest extends TestCase
             DB::rollBack();
         }
         $this->assertDatabaseHas('sessoes_estudo', ['id' => $sessao->id]);
-        Storage::disk('public')->assertExists($sessao->caminho_foto);
+        Storage::disk('local')->assertExists($sessao->caminho_foto);
     }
 
     public function test_falha_de_armazenamento_preserva_arquivo_e_registra_aviso(): void
     {
         $sessao = $this->criarSessao();
-        $discoReal = Storage::disk('public');
+        $discoReal = Storage::disk('local');
         Log::spy();
         $discoComFalha = Mockery::mock();
         $discoComFalha->shouldReceive('exists')->with($sessao->caminho_foto)->once()->andReturn(true);
         $discoComFalha->shouldReceive('delete')->with($sessao->caminho_foto)->once()->andReturn(false);
-        Storage::set('public', $discoComFalha);
+        Storage::set('local', $discoComFalha);
 
         app(SessaoEstudoService::class)->excluirSessao($sessao->usuario, $sessao);
 
@@ -149,12 +149,12 @@ class ExclusaoSessaoEstudoTest extends TestCase
     public function test_excecao_no_armazenamento_nao_desfaz_exclusao_da_sessao(): void
     {
         $sessao = $this->criarSessao();
-        $discoReal = Storage::disk('public');
+        $discoReal = Storage::disk('local');
         Log::spy();
         $discoComFalha = Mockery::mock();
         $discoComFalha->shouldReceive('exists')->once()->andReturn(true);
         $discoComFalha->shouldReceive('delete')->once()->andThrow(new RuntimeException('Armazenamento indisponível'));
-        Storage::set('public', $discoComFalha);
+        Storage::set('local', $discoComFalha);
 
         app(SessaoEstudoService::class)->excluirSessao($sessao->usuario, $sessao);
 
@@ -165,7 +165,7 @@ class ExclusaoSessaoEstudoTest extends TestCase
     public function test_foto_ja_ausente_nao_impede_exclusao_da_sessao(): void
     {
         $sessao = $this->criarSessao();
-        Storage::disk('public')->delete($sessao->caminho_foto);
+        Storage::disk('local')->delete($sessao->caminho_foto);
         app(SessaoEstudoService::class)->excluirSessao($sessao->usuario, $sessao);
         $this->assertDatabaseMissing('sessoes_estudo', ['id' => $sessao->id]);
     }
@@ -181,6 +181,6 @@ class ExclusaoSessaoEstudoTest extends TestCase
             $this->assertSame(403, $erro->getStatusCode());
         }
         $this->assertDatabaseHas('sessoes_estudo', ['id' => $sessao->id]);
-        Storage::disk('public')->assertExists($sessao->caminho_foto);
+        Storage::disk('local')->assertExists($sessao->caminho_foto);
     }
 }

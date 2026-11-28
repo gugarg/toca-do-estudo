@@ -12,6 +12,9 @@ class Comentario extends Model
 {
     use HasFactory;
 
+    public const CREATED_AT = 'data_criacao';
+    public const UPDATED_AT = 'data_edicao';
+
     protected $table = 'comentarios_sessao_estudo';
 
     protected $fillable = [
@@ -29,8 +32,8 @@ class Comentario extends Model
     protected function casts(): array
     {
         return [
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
+            'data_criacao' => 'datetime',
+            'data_edicao' => 'datetime',
         ];
     }
 

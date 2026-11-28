@@ -46,11 +46,12 @@ class AgregadorMetricasService
         };
 
         $linhas = DB::table('membros_grupo')
+            ->join('grupos', 'grupos.id', '=', 'membros_grupo.grupo_id')
             ->join('usuarios', 'usuarios.id', '=', 'membros_grupo.usuario_id')
             ->leftJoin('sessoes_estudo', function ($join) use ($filtroData) {
                 $join->on('sessoes_estudo.usuario_id', '=', 'usuarios.id')
                     ->where('sessoes_estudo.compartilhar', '=', true)
-                    ->whereRaw('sessoes_estudo.data_estudo >= DATE(membros_grupo.ingressou_em)');
+                    ->whereRaw('sessoes_estudo.data_estudo >= DATE(grupos.data_criacao)');
                 if ($filtroData !== null) {
                     $join->where('sessoes_estudo.data_estudo', '>=', $filtroData);
                 }

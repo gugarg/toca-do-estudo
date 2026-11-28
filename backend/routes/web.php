@@ -9,8 +9,11 @@ use App\Livewire\Autenticacao\RedefinirSenha;
 use App\Livewire\Grupos\DetalhesGrupo;
 use App\Livewire\Painel\VisaoGeral;
 use App\Livewire\Perfil\EditarPerfil;
+use App\Models\SessaoEstudo;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,4 +76,26 @@ Route::middleware('auth')->group(function () {
     // Rota responsável por exibir e editar as informações de perfil do estudante
     Route::get('/perfil', EditarPerfil::class)->name('perfil');
     Route::get('/profile', EditarPerfil::class)->name('profile');
+
+    // Rota protegida para servir a fotografia comprobatória da sessão após validar permissão via Policy
+    Route::get('/sessoes/{sessao}/foto', function (SessaoEstudo $sessao) {
+        Gate::authorize('view', $sessao);
+
+        $caminhoFoto = $sessao->caminho_foto;
+        if (!$caminhoFoto || str_contains($caminhoFoto, '..')) {
+            abort(404);
+        }
+
+        $caminhoNormalizado = ltrim($caminhoFoto, '/');
+        $disco = Storage::disk('local');
+
+        if (!$disco->exists($caminhoNormalizado)) {
+            abort(404);
+        }
+
+        return $disco->response($caminhoNormalizado, basename($caminhoNormalizado), [
+            'Content-Type' => 'image/webp',
+            'Cache-Control' => 'private, no-store, no-cache, must-revalidate, max-age=0',
+        ]);
+    })->name('sessoes.foto');
 });

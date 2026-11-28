@@ -100,6 +100,7 @@ class AgregadorMetricasServiceTest extends TestCase
             'codigo_convite' => 'RAT-FOCO01',
             'metrica_padrao' => 'dias_ativos',
         ]);
+        $group->forceFill(['data_criacao' => '2026-09-01 00:00:00', 'data_edicao' => '2026-09-01 00:00:00'])->save();
         $group->members()->attach([
             $owner->id => ['papel' => 'proprietario', 'ingressou_em' => '2026-09-01 00:00:00'],
             $studentB->id => ['papel' => 'membro', 'ingressou_em' => '2026-09-01 00:00:00'],
@@ -156,6 +157,7 @@ class AgregadorMetricasServiceTest extends TestCase
             'pontos_hora' => 10.0,
             'pontos_questao' => 1.0,
         ]);
+        $group->forceFill(['data_criacao' => '2026-09-01 00:00:00', 'data_edicao' => '2026-09-01 00:00:00'])->save();
         $group->members()->attach([
             $user1->id => ['papel' => 'proprietario', 'ingressou_em' => '2026-09-01 00:00:00'],
             $user2->id => ['papel' => 'membro', 'ingressou_em' => '2026-09-01 00:00:00'],
@@ -204,6 +206,7 @@ class AgregadorMetricasServiceTest extends TestCase
             'pontos_hora' => 20.0,
             'pontos_questao' => 0.5,
         ]);
+        $group->forceFill(['data_criacao' => '2026-09-01 00:00:00', 'data_edicao' => '2026-09-01 00:00:00'])->save();
         $group->members()->attach($user->id, ['papel' => 'proprietario', 'ingressou_em' => '2026-09-01 00:00:00']);
 
         // 90 minutos = 1.5 horas líquidas | 30 questões
@@ -237,6 +240,7 @@ class AgregadorMetricasServiceTest extends TestCase
             'pontos_hora' => 10.0,
             'pontos_questao' => 1.0,
         ]);
+        $group->forceFill(['data_criacao' => '2026-09-01 00:00:00', 'data_edicao' => '2026-09-01 00:00:00'])->save();
         $group->members()->attach([
             $userA->id => ['papel' => 'proprietario', 'ingressou_em' => '2026-09-01 00:00:00'],
             $userB->id => ['papel' => 'membro', 'ingressou_em' => '2026-09-01 00:00:00'],
@@ -284,6 +288,7 @@ class AgregadorMetricasServiceTest extends TestCase
             'pontos_hora' => 0.01,
             'pontos_questao' => 0.01,
         ]);
+        $grupo->forceFill(['data_criacao' => '2026-09-01 00:00:00', 'data_edicao' => '2026-09-01 00:00:00'])->save();
         $grupo->members()->attach([
             $menorTempo->id => ['papel' => 'proprietario', 'ingressou_em' => '2026-09-01 00:00:00'],
             $maiorTempo->id => ['papel' => 'membro', 'ingressou_em' => '2026-09-01 00:00:00'],
@@ -312,11 +317,12 @@ class AgregadorMetricasServiceTest extends TestCase
         }
     }
 
-    public function test_sessoes_anteriores_a_entrada_no_grupo_nao_contam_no_ranking_nem_no_mural(): void
+    public function test_corte_temporal_pela_criacao_do_grupo_no_ranking_e_no_mural(): void
     {
         $veterano = Usuario::factory()->create(['name' => 'Veterano']);
         $novatoSemEstudoHoje = Usuario::factory()->create(['name' => 'Novato']);
 
+        // Grupo criado em 2026-11-23
         $grupo = Grupo::create([
             'proprietario_id' => $novatoSemEstudoHoje->id,
             'nome' => 'Desafio Justo',
@@ -325,48 +331,60 @@ class AgregadorMetricasServiceTest extends TestCase
             'pontos_hora' => 10.0,
             'pontos_questao' => 1.0,
         ]);
+        $grupo->forceFill(['data_criacao' => '2026-11-23 10:00:00', 'data_edicao' => '2026-11-23 10:00:00'])->save();
 
-        // Ambos entraram em 2026-11-25
+        // Ambos entraram posteriormente em 2026-11-25
         $grupo->members()->attach([
             $novatoSemEstudoHoje->id => ['papel' => 'proprietario', 'ingressou_em' => '2026-11-25 10:00:00'],
             $veterano->id => ['papel' => 'membro', 'ingressou_em' => '2026-11-25 12:00:00'],
         ]);
 
-        // Sessão antiga de 24/11/2026 (anterior à entrada)
+        // Sessão antiga de 22/11/2026 (anterior à criação do grupo em 23/11) — NÃO deve contar
         SessaoEstudo::create([
             'usuario_id' => $veterano->id,
-            'data_estudo' => '2026-11-24',
-            'disciplina' => 'Estudo Passado',
+            'data_estudo' => '2026-11-22',
+            'disciplina' => 'Estudo Pré-Criação',
             'minutos' => 300,
             'questoes' => 100,
             'compartilhar' => true,
         ]);
 
-        // Sessão no mesmo dia da entrada (25/11/2026)
-        $sessaoValida = SessaoEstudo::create([
+        // Sessão de 24/11/2026 (posterior à criação do grupo em 23/11, mas anterior à entrada em 25/11) — DEVE contar
+        $sessaoEntreCriacaoEEntrada = SessaoEstudo::create([
             'usuario_id' => $veterano->id,
-            'data_estudo' => '2026-11-25',
-            'disciplina' => 'Estudo Atual',
+            'data_estudo' => '2026-11-24',
+            'disciplina' => 'Estudo Pós-Criação',
             'minutos' => 60,
             'questoes' => 10,
             'compartilhar' => true,
         ]);
 
-        // No mural do grupo, apenas a sessão de 25/11 deve aparecer
-        $sessoesMural = $grupo->sessoes()->get();
-        $this->assertCount(1, $sessoesMural);
-        $this->assertSame($sessaoValida->id, $sessoesMural->first()->id);
+        // Sessão no mesmo dia da entrada (25/11/2026) — DEVE contar
+        $sessaoValida = SessaoEstudo::create([
+            'usuario_id' => $veterano->id,
+            'data_estudo' => '2026-11-25',
+            'disciplina' => 'Estudo Atual',
+            'minutos' => 30,
+            'questoes' => 5,
+            'compartilhar' => true,
+        ]);
 
-        // No ranking geral, veterano deve contabilizar apenas 60 min (10 + 10 = 20 pts) e novato deve aparecer com 0
+        // No mural do grupo, as sessões a partir de 23/11 (24/11 e 25/11) devem aparecer
+        $sessoesMural = $grupo->sessoes()->orderBy('data_estudo')->get();
+        $this->assertCount(2, $sessoesMural);
+        $this->assertEquals([$sessaoEntreCriacaoEEntrada->id, $sessaoValida->id], $sessoesMural->pluck('id')->all());
+
+        // No ranking geral, veterano contabiliza 90 min (1.5h * 10 = 15) + 15q (15) = 30.0 pts; novato aparece com 0
         $ranking = $this->service->obterClassificacaoGrupo($grupo, 'horas_questoes', 'geral');
         $this->assertCount(2, $ranking);
 
         $itemVeterano = $ranking->firstWhere('user_id', $veterano->id);
         $itemNovato = $ranking->firstWhere('user_id', $novatoSemEstudoHoje->id);
 
-        $this->assertEquals(60, $itemVeterano['minutes_in_period']);
-        $this->assertEquals(10, $itemVeterano['questions_in_period']);
-        $this->assertEquals(20.0, $itemVeterano['score']);
+        $this->assertEquals(90, $itemVeterano['minutes_in_period']);
+        $this->assertEquals(15, $itemVeterano['questions_in_period']);
+        $this->assertEquals(2, $itemVeterano['active_days_in_period']);
+        $this->assertEquals(30.0, $itemVeterano['score']);
 
         $this->assertNotNull($itemNovato);
         $this->assertEquals(0, $itemNovato['minutes_in_period']);

@@ -18,6 +18,7 @@ class PipelineImagemServiceTest extends TestCase
     {
         parent::setUp();
         $this->pipeline = app(PipelineImagemService::class);
+        Storage::fake('local');
         Storage::fake('public');
     }
 
@@ -32,11 +33,12 @@ class PipelineImagemServiceTest extends TestCase
         $this->assertStringEndsWith('.webp', $path1);
         $this->assertStringEndsWith('.webp', $path2);
 
-        Storage::disk('public')->assertExists($path1);
+        Storage::disk('local')->assertExists($path1);
+        Storage::disk('public')->assertMissing($path1);
         Storage::disk('public')->assertExists($path2);
 
         // Verifica que o conteúdo salvo é de fato um WebP válido legível pelo GD
-        $fullPath1 = Storage::disk('public')->path($path1);
+        $fullPath1 = Storage::disk('local')->path($path1);
         $imgResource = @imagecreatefromwebp($fullPath1);
         $this->assertNotFalse($imgResource, 'O arquivo gerado deve ser um WebP válido legível pelo GD');
         imagedestroy($imgResource);
@@ -58,7 +60,7 @@ class PipelineImagemServiceTest extends TestCase
         $hugeImage = UploadedFile::fake()->image('tela_ultra.jpg', 2560, 1440);
 
         $path = $this->pipeline->processarEConverterParaWebP($hugeImage, 'sessions');
-        $fullPath = Storage::disk('public')->path($path);
+        $fullPath = Storage::disk('local')->path($path);
 
         $info = getimagesize($fullPath);
         $width = $info[0];
